@@ -1,0 +1,27 @@
+# Kiro
+.kiro/
+
+# Meson build
+builddir/
+build/
+subprojects/
+
+# C compiled objects
+*.o
+*.so
+*.so.*
+*.a
+*.dylib
+*.out
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.kate-swp
+
+# OS files
+.DS_Store
+Thumbs.db

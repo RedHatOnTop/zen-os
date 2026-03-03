@@ -1,0 +1,85 @@
+name: QEMU Boot Test
+
+on:
+  push:
+    paths:
+      - 'compositor/**'
+      - 'shell/**'
+      - 'daemons/**'
+      - 'common/**'
+      - 'tools/zen-test-cli/**'
+  pull_request:
+    paths:
+      - 'compositor/**'
+      - 'shell/**'
+      - 'daemons/**'
+      - 'common/**'
+
+jobs:
+  build-and-boot-test:
+    name: Build + QEMU Boot Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            meson ninja-build gcc pkg-config \
+            libwlroots-dev libsystemd-dev \
+            libcairo2-dev libpango1.0-dev \
+            wayland-protocols libxkbcommon-dev \
+            qemu-system-x86 qemu-utils \
+            socat jq \
+            debootstrap
+
+      # TODO: Uncomment when compositor source exists
+      # - name: Build compositor (ASan + UBSan)
+      #   run: |
+      #     meson setup builddir -Db_sanitize=address,undefined
+      #     meson compile -C builddir
+
+      # TODO: Uncomment when test image builder exists
+      # - name: Create minimal test image
+      #   run: |
+      #     ./tools/create-test-image.sh /tmp/zen-test.qcow2
+
+      - name: Verify zen-test-cli dependencies
+        run: |
+          chmod +x tools/zen-test-cli/zen-test-cli
+          ./tools/zen-test-cli/zen-test-cli check-deps || true
+
+      # TODO: Uncomment when OS image is available
+      # - name: Boot test
+      #   run: |
+      #     export ZEN_BOOT_TIMEOUT=90
+      #     ./tools/zen-test-cli/zen-test-cli create ci-test \
+      #       --ram 2048 --cpus 2 --image /tmp/zen-test.qcow2
+      #     ./tools/zen-test-cli/zen-test-cli start ci-test \
+      #       --headless --wait-boot
+      #     ./tools/zen-test-cli/zen-test-cli screenshot ci-test \
+      #       --output /tmp/zen-os-logs/ci-boot.ppm
+      #
+      # - name: Check for sanitizer errors
+      #   run: |
+      #     ERRORS=$(grep -c "ERROR: AddressSanitizer\|ERROR: LeakSanitizer" \
+      #       /tmp/zen-test-vms/ci-test/serial.log 2>/dev/null || echo 0)
+      #     echo "Sanitizer errors: $ERRORS"
+      #     [ "$ERRORS" -eq 0 ] || exit 1
+      #
+      # - name: Upload artifacts
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: boot-test-results
+      #     path: |
+      #       /tmp/zen-os-logs/
+      #       /tmp/zen-test-vms/ci-test/serial.log
+      #
+      # - name: Cleanup
+      #   if: always()
+      #   run: |
+      #     ./tools/zen-test-cli/zen-test-cli destroy ci-test 2>/dev/null || true

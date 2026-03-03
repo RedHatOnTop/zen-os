@@ -1,0 +1,213 @@
+#!/usr/bin/env bash
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  zen-test-cli — Zen OS QEMU Testing Infrastructure                     ║
+# ║  Non-interactive VM control for agentic LLM-driven development.        ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+#
+# Every command returns immediately (exit code 0=OK, non-zero=error).
+# No interactive prompts. All output goes to files or stderr.
+# stdout is reserved for machine-readable JSON results.
+
+set -euo pipefail
+
+# Resolve absolute path to this script and its libraries.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="${SCRIPT_DIR}/lib"
+
+# Source all library modules.
+source "${LIB_DIR}/config.sh"
+source "${LIB_DIR}/qmp.sh"
+source "${LIB_DIR}/boot.sh"
+source "${LIB_DIR}/vm.sh"
+source "${LIB_DIR}/scenarios.sh"
+
+# ─── Version ──────────────────────────────────────────────────────────────────
+VERSION="0.1.0"
+
+# ─── Usage ────────────────────────────────────────────────────────────────────
+usage() {
+    cat <<EOF
+zen-test-cli v${VERSION} — Zen OS QEMU Testing Infrastructure
+
+USAGE:
+  zen-test-cli <command> [options]
+
+VM LIFECYCLE:
+  create <name> [--ram MB] [--cpus N] [--disk SIZE] [--image PATH]
+                              Create a new VM configuration
+  start  <name> [--headless] [--wait-boot]
+                              Start a VM (background, non-blocking)
+  stop   <name> [--force]     Stop a running VM (graceful → force)
+  pause  <name>               Pause (suspend) a running VM
+  resume <name>               Resume a paused VM
+  destroy <name>              Stop + delete all VM files
+  list                        List all VMs with status (JSON)
+
+ARTIFACTS:
+  screenshot <name> --output <path>   Capture framebuffer to PPM
+  memdump    <name> --output <path>   Dump guest memory to file
+
+GUEST INTERACTION:
+  exec <name> -- <command>    Run command in guest via virtio-serial
+  wait-boot <name> [--timeout S]
+                              Wait for boot signal with strict timeout
+
+SCENARIOS:
+  scenario <name> <vm> [args]   Run a test scenario
+  scenario list                 List available scenarios
+
+ENVIRONMENT VARIABLES:
+  ZEN_TEST_DIR      VM storage directory   (default: /tmp/zen-test-vms)
+  ZEN_LOG_DIR       Log output directory   (default: /tmp/zen-os-logs)
+  ZEN_OS_IMAGE      Path to Zen OS disk image for testing
+  ZEN_BOOT_TIMEOUT  Boot wait timeout in seconds (default: 120)
+  ZEN_BOOT_SIGNAL   Guest boot signal string (default: ZEN_BOOT_OK)
+  ZEN_QEMU_BIN      QEMU binary path (default: qemu-system-x86_64)
+
+PREREQUISITES:
+  - WSL2 with KVM enabled (nested virtualization)
+  - qemu-system-x86_64, qemu-img
+  - socat, jq
+  - Optional: stress-ng (for stress scenarios in guest)
+
+EXAMPLES:
+  # Full lifecycle test
+  zen-test-cli create myvm --ram 2048 --cpus 2 --image zen-os.qcow2
+  zen-test-cli start myvm --headless --wait-boot
+  zen-test-cli screenshot myvm --output /tmp/zen-os-logs/boot.ppm
+  zen-test-cli scenario battery-low myvm --level 5
+  zen-test-cli screenshot myvm --output /tmp/zen-os-logs/battery.ppm
+  zen-test-cli stop myvm
+  zen-test-cli destroy myvm
+EOF
+}
+
+# ─── Dependency Check ─────────────────────────────────────────────────────────
+check_deps() {
+    local ok=true
+    for bin in "$ZEN_QEMU_BIN" qemu-img socat jq; do
+        if ! require_bin "$bin" 2>/dev/null; then
+            log_error "Missing dependency: $bin"
+            ok=false
+        fi
+    done
+
+    # Check KVM availability.
+    if [[ ! -e /dev/kvm ]]; then
+        log_warn "/dev/kvm not found. KVM acceleration unavailable."
+        log_warn "On WSL2: ensure 'nestedVirtualization=true' in .wslconfig"
+    fi
+
+    $ok && log_ok "All dependencies satisfied" || return 1
+}
+
+# ─── Command Dispatch ─────────────────────────────────────────────────────────
+main() {
+    if [[ $# -eq 0 ]]; then
+        usage
+        exit 0
+    fi
+
+    local cmd="$1"
+    shift
+
+    case "$cmd" in
+        # ── Lifecycle ──
+        create)
+            [[ $# -ge 1 ]] || { log_error "Usage: zen-test-cli create <name> [options]"; exit 1; }
+            vm_create "$@"
+            ;;
+        start)
+            [[ $# -ge 1 ]] || { log_error "Usage: zen-test-cli start <name> [options]"; exit 1; }
+            vm_start "$@"
+            ;;
+        stop)
+            [[ $# -ge 1 ]] || { log_error "Usage: zen-test-cli stop <name> [options]"; exit 1; }
+            vm_stop "$@"
+            ;;
+        pause)
+            [[ $# -ge 1 ]] || { log_error "Usage: zen-test-cli pause <name>"; exit 1; }
+            vm_pause "$1"
+            ;;
+        resume)
+            [[ $# -ge 1 ]] || { log_error "Usage: zen-test-cli resume <name>"; exit 1; }
+            vm_resume "$1"
+            ;;
+        destroy)
+            [[ $# -ge 1 ]] || { log_error "Usage: zen-test-cli destroy <name>"; exit 1; }
+            vm_destroy "$1"
+            ;;
+        list)
+            vm_list
+            ;;
+
+        # ── Artifacts ──
+        screenshot)
+            [[ $# -ge 1 ]] || { log_error "Usage: zen-test-cli screenshot <name> --output <path>"; exit 1; }
+            local name="$1"; shift
+            local output=""
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    --output|-o) output="$2"; shift 2 ;;
+                    *) shift ;;
+                esac
+            done
+            [[ -n "$output" ]] || { log_error "Missing --output <path>"; exit 1; }
+            local qmp_sock
+            qmp_sock="$(vm_qmp_socket "$name")"
+            qmp_screendump "$qmp_sock" "$output"
+            ;;
+        memdump)
+            [[ $# -ge 1 ]] || { log_error "Usage: zen-test-cli memdump <name> --output <path>"; exit 1; }
+            local name="$1"; shift
+            local output=""
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    --output|-o) output="$2"; shift 2 ;;
+                    *) shift ;;
+                esac
+            done
+            [[ -n "$output" ]] || { log_error "Missing --output <path>"; exit 1; }
+            local qmp_sock
+            qmp_sock="$(vm_qmp_socket "$name")"
+            qmp_dump_memory "$qmp_sock" "$output"
+            ;;
+
+        # ── Guest ──
+        exec)
+            [[ $# -ge 1 ]] || { log_error "Usage: zen-test-cli exec <name> -- <command>"; exit 1; }
+            local name="$1"; shift
+            # Skip "--" separator if present.
+            [[ "${1:-}" == "--" ]] && shift
+            vm_exec "$name" "$@"
+            ;;
+        wait-boot)
+            [[ $# -ge 1 ]] || { log_error "Usage: zen-test-cli wait-boot <name> [--timeout S]"; exit 1; }
+            boot_wait "$@"
+            ;;
+
+        # ── Scenarios ──
+        scenario)
+            [[ $# -ge 1 ]] || { log_error "Usage: zen-test-cli scenario <name> <vm> [args]"; exit 1; }
+            scenario_run "$@"
+            ;;
+
+        # ── Utilities ──
+        check-deps)
+            check_deps
+            ;;
+        version|-v|--version)
+            echo "zen-test-cli v${VERSION}"
+            ;;
+        help|-h|--help)
+            usage
+            ;;
+        *)
+            log_error "Unknown command: $cmd"
+            usage >&2
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

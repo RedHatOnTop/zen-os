@@ -4,7 +4,9 @@
 # Meson build
 builddir/
 build/
-subprojects/
+subprojects/*/
+subprojects/packagecache/
+!subprojects/*.wrap
 
 # C compiled objects
 *.o

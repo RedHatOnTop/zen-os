@@ -1,309 +1,194 @@
 #!/usr/bin/env bash
-# ╔══════════════════════════════════════════════════════════════════════════╗
-# ║  build-test-image.sh — Zen OS Minimal Test Image Builder               ║
-# ║  Creates a bootable Alpine Linux qcow2 with zen-compositor installed.  ║
-# ╚══════════════════════════════════════════════════════════════════════════╝
-#
-# Usage:
-#   sudo ./build-test-image.sh \
-#       --compositor /path/to/zen-compositor \
-#       --output /path/to/output.qcow2
-#
-# Prerequisites (host): qemu-img, sfdisk, mkfs.ext4, wget, mount, chroot
-
+# =====================================================================
+#  build-test-image.sh -- Zen OS Minimal Test Image Builder
+#  Creates a bootable Ubuntu 24.04 qcow2 with zen-compositor installed.
+# =====================================================================
 set -euo pipefail
 
-# ── Defaults ──────────────────────────────────────────────────────────────────
-ALPINE_VERSION="3.20"
-ALPINE_ARCH="x86_64"
-ALPINE_MIRROR="https://dl-cdn.alpinelinux.org/alpine"
-DISK_SIZE_MB=256
+UBUNTU_SUITE="noble"
+UBUNTU_MIRROR="http://archive.ubuntu.com/ubuntu"
+DISK_SIZE_MB=2048
 COMPOSITOR_BIN=""
+BUILD_DIR=""
 OUTPUT=""
 WORK_DIR=""
-
-# ── Argument Parsing ─────────────────────────────────────────────────────────
-usage() {
-    cat <<EOF
-build-test-image.sh — Create a minimal bootable qcow2 for QEMU testing
-
-Usage:
-  sudo $0 --compositor <path> --output <path> [options]
-
-Options:
-  --compositor <path>   Path to compiled zen-compositor binary (required)
-  --output <path>       Path for output qcow2 image (required)
-  --disk-size <MB>      Disk size in MB (default: 256)
-  --alpine-ver <ver>    Alpine Linux version (default: 3.20)
-  --help                Show this help
-
-Prerequisites:
-  qemu-img, sfdisk, mkfs.ext4, wget, mount, chroot (requires root)
-EOF
-}
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --compositor)  COMPOSITOR_BIN="$2";  shift 2 ;;
+        --builddir)    BUILD_DIR="$2";       shift 2 ;;
         --output)      OUTPUT="$2";          shift 2 ;;
         --disk-size)   DISK_SIZE_MB="$2";    shift 2 ;;
-        --alpine-ver)  ALPINE_VERSION="$2";  shift 2 ;;
-        --help|-h)     usage; exit 0 ;;
-        *)             echo "Unknown option: $1"; usage; exit 1 ;;
+        --help|-h)     echo "Usage: sudo $0 --compositor PATH --builddir PATH --output PATH"; exit 0 ;;
+        *)             echo "Unknown: $1"; exit 1 ;;
     esac
 done
 
-if [[ -z "$COMPOSITOR_BIN" || -z "$OUTPUT" ]]; then
-    echo "ERROR: --compositor and --output are required"
-    usage
-    exit 1
-fi
+[[ -z "$COMPOSITOR_BIN" || -z "$OUTPUT" ]] && { echo "ERROR: --compositor and --output required"; exit 1; }
+[[ ! -f "$COMPOSITOR_BIN" ]] && { echo "ERROR: Binary not found: $COMPOSITOR_BIN"; exit 1; }
+[[ $EUID -ne 0 ]] && { echo "ERROR: Must be root"; exit 1; }
+[[ -z "$BUILD_DIR" ]] && BUILD_DIR="$(dirname "$(dirname "$(dirname "$COMPOSITOR_BIN")")")"
 
-if [[ ! -f "$COMPOSITOR_BIN" ]]; then
-    echo "ERROR: Compositor binary not found: $COMPOSITOR_BIN"
-    exit 1
-fi
-
-if [[ $EUID -ne 0 ]]; then
-    echo "ERROR: This script must be run as root (for mount/chroot)"
-    exit 1
-fi
-
-# ── Dependency Check ─────────────────────────────────────────────────────────
-for cmd in qemu-img sfdisk mkfs.ext4 wget mount chroot; do
-    if ! command -v "$cmd" &>/dev/null; then
-        echo "ERROR: Missing required command: $cmd"
-        exit 1
-    fi
+for cmd in qemu-img sfdisk mkfs.ext4 debootstrap mount chroot; do
+    command -v "$cmd" &>/dev/null || { echo "ERROR: Missing: $cmd"; exit 1; }
 done
 
-# ── Work Directory ───────────────────────────────────────────────────────────
 WORK_DIR="$(mktemp -d /tmp/zen-image-XXXXXX)"
 RAW_IMG="${WORK_DIR}/disk.raw"
 ROOTFS="${WORK_DIR}/rootfs"
 LOOP_DEV=""
 
 cleanup() {
-    echo "[CLEANUP] Cleaning up..."
-    # Unmount everything
-    umount -R "$ROOTFS" 2>/dev/null || true
-    # Detach loop device
-    if [[ -n "$LOOP_DEV" ]]; then
-        losetup -d "$LOOP_DEV" 2>/dev/null || true
-    fi
+    echo "[CLEANUP] Tearing down..."
+    umount "$ROOTFS/dev/pts"  2>/dev/null || true
+    umount "$ROOTFS/dev"      2>/dev/null || true
+    umount "$ROOTFS/sys"      2>/dev/null || true
+    umount "$ROOTFS/proc"     2>/dev/null || true
+    umount "$ROOTFS"          2>/dev/null || true
+    [[ -n "$LOOP_DEV" ]] && losetup -d "$LOOP_DEV" 2>/dev/null || true
     rm -rf "$WORK_DIR"
     echo "[CLEANUP] Done"
 }
 trap cleanup EXIT
 
-echo "============================================"
-echo " Zen OS Test Image Builder"
-echo " Alpine ${ALPINE_VERSION} | ${DISK_SIZE_MB}MB disk"
-echo "============================================"
-
-# ── Step 1: Download Alpine minirootfs ────────────────────────────────────────
-ROOTFS_TAR="${WORK_DIR}/alpine-minirootfs.tar.gz"
-ROOTFS_URL="${ALPINE_MIRROR}/v${ALPINE_VERSION}/releases/${ALPINE_ARCH}/alpine-minirootfs-${ALPINE_VERSION}.0-${ALPINE_ARCH}.tar.gz"
-
-echo "[1/9] Downloading Alpine minirootfs..."
-wget -q -O "$ROOTFS_TAR" "$ROOTFS_URL" || {
-    echo "ERROR: Failed to download Alpine minirootfs from $ROOTFS_URL"
-    exit 1
-}
-echo "     Downloaded: $(du -h "$ROOTFS_TAR" | cut -f1)"
-
-# ── Step 2: Create raw disk image ────────────────────────────────────────────
-echo "[2/9] Creating raw disk image (${DISK_SIZE_MB} MB)..."
+echo "[1/8] Creating raw disk image (${DISK_SIZE_MB} MB)..."
 dd if=/dev/zero of="$RAW_IMG" bs=1M count="$DISK_SIZE_MB" status=none
 
-# Partition: 1 MiB BIOS boot gap + rest is ext4 root
-echo "[3/9] Partitioning..."
+echo "[2/8] Partitioning..."
 sfdisk "$RAW_IMG" <<EOF >/dev/null 2>&1
 label: dos
 type=83, bootable
 EOF
 
-# ── Step 3: Setup loop device and format ─────────────────────────────────────
-echo "[4/9] Setting up loop device and formatting..."
+echo "[3/8] Setting up loop device..."
 LOOP_DEV="$(losetup --find --show --partscan "$RAW_IMG")"
 PART="${LOOP_DEV}p1"
-
-# Wait for partition device to appear
-for i in $(seq 1 10); do
-    [[ -b "$PART" ]] && break
-    sleep 0.5
-done
-
-if [[ ! -b "$PART" ]]; then
-    echo "ERROR: Partition device $PART not found"
-    exit 1
-fi
-
+for _ in $(seq 1 20); do [[ -b "$PART" ]] && break; sleep 0.3; done
+[[ ! -b "$PART" ]] && { echo "ERROR: Partition $PART not found"; exit 1; }
 mkfs.ext4 -q -L zenroot "$PART"
 
-# ── Step 4: Mount and extract rootfs ─────────────────────────────────────────
-echo "[5/9] Extracting Alpine rootfs..."
+echo "[4/8] Bootstrapping Ubuntu ${UBUNTU_SUITE}..."
 mkdir -p "$ROOTFS"
 mount "$PART" "$ROOTFS"
-tar xzf "$ROOTFS_TAR" -C "$ROOTFS"
+debootstrap --variant=minbase \
+    --include=systemd,systemd-sysv,udev,dbus,kmod,init \
+    "$UBUNTU_SUITE" "$ROOTFS" "$UBUNTU_MIRROR"
 
-# ── Step 5: Configure Alpine inside chroot ───────────────────────────────────
-echo "[6/9] Configuring guest OS..."
-
-# Setup resolv.conf for network inside chroot
-cp /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
-
-# Mount pseudo-filesystems for chroot
+echo "[5/8] Configuring guest OS..."
 mount -t proc proc "$ROOTFS/proc"
 mount -t sysfs sysfs "$ROOTFS/sys"
 mount --bind /dev "$ROOTFS/dev"
 mount --bind /dev/pts "$ROOTFS/dev/pts"
+cp /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
+echo "zen-os-test" > "$ROOTFS/etc/hostname"
+echo "/dev/vda1  /  ext4  errors=remount-ro  0  1" > "$ROOTFS/etc/fstab"
 
-# Setup apk repos
-mkdir -p "$ROOTFS/etc/apk"
-cat > "$ROOTFS/etc/apk/repositories" <<EOF
-${ALPINE_MIRROR}/v${ALPINE_VERSION}/main
-${ALPINE_MIRROR}/v${ALPINE_VERSION}/community
-EOF
-
-# Install packages via chroot
-chroot "$ROOTFS" /bin/sh <<'CHROOTEOF'
+chroot "$ROOTFS" /bin/bash <<'CHROOTEOF'
 set -e
-
-apk update
-apk add --no-cache \
-    linux-virt \
-    openrc \
-    syslinux \
-    mesa-dri-gallium \
-    mesa-egl \
-    mesa-gl \
-    libinput \
-    eudev \
-    wayland \
-    wayland-libs-server \
-    xkeyboard-config \
-    libxkbcommon
-
-# Setup OpenRC
-rc-update add devfs sysinit
-rc-update add dmesg sysinit
-rc-update add mdev sysinit
-rc-update add hwdrivers sysinit
-
-rc-update add networking boot
-rc-update add hostname boot
-
-# Create serial console service for kernel messages
-sed -i 's/^#ttyS0/ttyS0/' /etc/inittab 2>/dev/null || true
-
-# Set hostname
-echo "zen-os-test" > /etc/hostname
-
-# Set root password (empty for test)
-echo "root:" | chpasswd
-
+export DEBIAN_FRONTEND=noninteractive
+cat > /etc/apt/sources.list <<APT
+deb http://archive.ubuntu.com/ubuntu noble main universe
+deb http://archive.ubuntu.com/ubuntu noble-updates main universe
+APT
+apt-get update -qq
+apt-get install -y -qq --no-install-recommends \
+    linux-image-virtual grub-pc \
+    libdrm2 libegl1 libgbm1 libgles2 libgl1-mesa-dri \
+    libinput10 libwayland-server0 libwayland-client0 \
+    libxkbcommon0 libpixman-1-0 libseat1 libudev1 \
+    libdisplay-info1 libliftoff0 libevdev2 libmtdev1t64 \
+    libgudev-1.0-0 libffi8 \
+    libxcb1 libxcb-composite0 libxcb-dri3-0 libxcb-present0 \
+    libxcb-render0 libxcb-render-util0 libxcb-shm0 \
+    libxcb-xfixes0 libxcb-xinput0 libxcb-ewmh2 libxcb-icccm4 libxcb-res0
+systemctl enable serial-getty@ttyS0.service
+passwd -d root
+apt-get clean
+rm -rf /var/lib/apt/lists/*
 CHROOTEOF
 
-# ── Step 6: Install compositor and auto-start script ─────────────────────────
-echo "[7/9] Installing compositor and auto-start service..."
+echo "[6/8] Installing compositor and libraries..."
+install -m 755 "$COMPOSITOR_BIN" "$ROOTFS/usr/bin/zen-compositor"
+ZEN_LIB_DIR="$ROOTFS/usr/lib/zen"
+mkdir -p "$ZEN_LIB_DIR"
 
-# Copy compositor binary
-cp "$COMPOSITOR_BIN" "$ROOTFS/usr/bin/zen-compositor"
-chmod +x "$ROOTFS/usr/bin/zen-compositor"
-
-# Copy any required shared libs (ldd output) — best effort
-if command -v ldd &>/dev/null; then
-    ldd "$COMPOSITOR_BIN" 2>/dev/null | grep "=>" | awk '{print $3}' | while read lib; do
-        if [[ -f "$lib" && ! -f "$ROOTFS$lib" ]]; then
-            mkdir -p "$ROOTFS$(dirname "$lib")"
-            cp "$lib" "$ROOTFS$lib" 2>/dev/null || true
+SUBPROJECT_LIBS=(
+    "subprojects/scenefx/libscenefx-0.4.so"
+    "subprojects/wlroots/libwlroots-0.19.so"
+    "subprojects/wayland-1.24.0/src/libwayland-server.so.0"
+    "subprojects/wayland-1.24.0/src/libwayland-client.so.0"
+    "subprojects/pixman/pixman/libpixman-1.so.0"
+)
+for lib in "${SUBPROJECT_LIBS[@]}"; do
+    src="${BUILD_DIR}/${lib}"
+    if [[ -f "$src" ]]; then
+        base="$(basename "$src")"
+        cp "$src" "$ZEN_LIB_DIR/$base"
+        echo "  copied: $base"
+        soname="$(readelf -d "$src" 2>/dev/null | grep SONAME | sed 's/.*\[\(.*\)\]/\1/' || true)"
+        if [[ -n "$soname" && "$soname" != "$base" ]]; then
+            ln -sf "$base" "$ZEN_LIB_DIR/$soname"
+            echo "  symlink: $soname -> $base"
         fi
-    done
-fi
+    else
+        echo "  WARNING: not found: $src"
+    fi
+done
+echo "/usr/lib/zen" > "$ROOTFS/etc/ld.so.conf.d/zen.conf"
+chroot "$ROOTFS" ldconfig
 
-# Create OpenRC init script for zen-compositor
-cat > "$ROOTFS/etc/init.d/zen-compositor" <<'INITEOF'
-#!/sbin/openrc-run
+cat > "$ROOTFS/etc/systemd/system/zen-compositor.service" <<'UNITEOF'
+[Unit]
+Description=Zen OS Wayland Compositor
+After=systemd-logind.service
+Wants=systemd-logind.service
 
-name="zen-compositor"
-description="Zen OS Wayland Compositor"
+[Service]
+Type=simple
+Environment=WLR_BACKENDS=headless
+Environment=WLR_RENDERER=gles2
+Environment=WLR_RENDERER_ALLOW_SOFTWARE=1
+Environment=WLR_HEADLESS_OUTPUTS=1
+Environment=XDG_RUNTIME_DIR=/run/user/0
+Environment=WLR_LIBINPUT_NO_DEVICES=1
+Environment=LD_LIBRARY_PATH=/usr/lib/zen
+ExecStartPre=/bin/mkdir -p /run/user/0
+ExecStartPre=/bin/chmod 0700 /run/user/0
+ExecStart=/usr/bin/zen-compositor
+StandardOutput=journal+console
+StandardError=journal+console
+Restart=on-failure
+RestartSec=3
 
-command="/usr/bin/zen-compositor"
-command_background=true
-pidfile="/run/zen-compositor.pid"
-output_log="/var/log/zen-compositor.log"
-error_log="/var/log/zen-compositor.log"
+[Install]
+WantedBy=multi-user.target
+UNITEOF
+chroot "$ROOTFS" systemctl enable zen-compositor.service
 
-depend() {
-    need localmount
-    after hwdrivers
+echo "[7/8] Installing GRUB..."
+chroot "$ROOTFS" grub-install --target=i386-pc --boot-directory=/boot "$LOOP_DEV"
+KERNEL_VER=$(ls "$ROOTFS/boot/" | grep "vmlinuz-" | head -1 | sed 's/vmlinuz-//')
+mkdir -p "$ROOTFS/boot/grub"
+cat > "$ROOTFS/boot/grub/grub.cfg" <<GRUBEOF
+set timeout=1
+set default=0
+menuentry "Zen OS Test" {
+    linux /boot/vmlinuz-${KERNEL_VER} root=/dev/vda1 ro console=ttyS0 quiet
+    initrd /boot/initrd.img-${KERNEL_VER}
 }
+GRUBEOF
 
-start_pre() {
-    # Required environment for headless Wayland compositor
-    export WLR_BACKENDS=headless
-    export WLR_RENDERER=gles2
-    export XDG_RUNTIME_DIR=/run/user/0
-    export WLR_HEADLESS_OUTPUTS=1
-
-    mkdir -p "$XDG_RUNTIME_DIR"
-    chmod 0700 "$XDG_RUNTIME_DIR"
-}
-INITEOF
-chmod +x "$ROOTFS/etc/init.d/zen-compositor"
-
-# Add to default runlevel
-chroot "$ROOTFS" rc-update add zen-compositor default
-
-# ── Step 7: Install bootloader ───────────────────────────────────────────────
-echo "[8/9] Installing bootloader..."
-
-# Install syslinux MBR
-dd if="$ROOTFS/usr/share/syslinux/mbr.bin" of="$LOOP_DEV" bs=440 count=1 conv=notrunc 2>/dev/null
-
-# Install extlinux
-mkdir -p "$ROOTFS/boot"
-chroot "$ROOTFS" /bin/sh -c "extlinux --install /boot" 2>/dev/null || {
-    # Fallback: write syslinux config manually
-    echo "WARN: extlinux --install failed, writing config manually"
-}
-
-# Find kernel version
-KERNEL_VER=$(ls "$ROOTFS/lib/modules/" | head -1)
-
-# Write syslinux config
-cat > "$ROOTFS/boot/extlinux.conf" <<EOF
-DEFAULT zen
-TIMEOUT 10
-PROMPT 0
-
-LABEL zen
-    LINUX /boot/vmlinuz-virt
-    INITRD /boot/initramfs-virt
-    APPEND root=/dev/sda1 rootfstype=ext4 console=ttyS0 quiet
-EOF
-
-# ── Step 8: Unmount and convert ──────────────────────────────────────────────
-echo "[9/9] Finalizing image..."
-
-# Unmount pseudo-fs
-umount -R "$ROOTFS/dev/pts" 2>/dev/null || true
-umount -R "$ROOTFS/dev" 2>/dev/null || true
-umount "$ROOTFS/sys" 2>/dev/null || true
-umount "$ROOTFS/proc" 2>/dev/null || true
+echo "[8/8] Finalizing image..."
+umount "$ROOTFS/dev/pts" 2>/dev/null || true
+umount "$ROOTFS/dev"     2>/dev/null || true
+umount "$ROOTFS/sys"     2>/dev/null || true
+umount "$ROOTFS/proc"    2>/dev/null || true
+sync
 umount "$ROOTFS"
-
-# Detach loop device
 losetup -d "$LOOP_DEV"
 LOOP_DEV=""
-
-# Ensure output directory exists
 mkdir -p "$(dirname "$OUTPUT")"
-
-# Convert to qcow2
 qemu-img convert -f raw -O qcow2 "$RAW_IMG" "$OUTPUT"
-
 echo ""
 echo "============================================"
 echo " Image built successfully!"

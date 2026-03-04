@@ -9,6 +9,37 @@ Versioning follows the milestone scheme defined in [ROADMAP.md](./ROADMAP.md).
 
 ## [Unreleased]
 
+### Phase 1: Foundation — Sub-Phase 1.1: Minimal Compositor — Empty Frame
+
+#### Added
+- **2026-03-04**: Sub-Phase 1.1 complete — minimal compositor verified end-to-end
+  - `src/compositor/src/main.c`: wlroots + SceneFX compositor with headless backend,
+    scene graph, output layout, frame handler, and `ZEN_BOOT_OK` serial signal
+  - `src/compositor/include/zen/compositor.h`: `ZenCompositor` and `ZenOutput` structs
+  - `src/compositor/meson.build`: SceneFX + wayland-server + xkbcommon dependencies
+  - `src/common/include/zen/dbus-errors.h`: `ZenError` enum for future D-Bus errors
+  - `src/common/src/dbus-errors.c`: Error-to-string mapping
+  - `src/common/meson.build`: Static library build for zen-common
+  - `tools/image-builder/build-test-image.sh`: Ubuntu 24.04 based qcow2 test image builder
+  - `tools/zen-test-cli/`: VM lifecycle management (create, start, stop, screenshot, destroy)
+  - `subprojects/scenefx.wrap`, `wlroots.wrap`, `wayland.wrap`, `pixman.wrap`: Meson wraps
+
+#### Quality Gate Results (Sub-Phase 1.1)
+- [x] `meson compile -C builddir` — 0 errors, 0 warnings
+- [x] `build-test-image.sh` produces bootable qcow2 (1049 MB)
+- [x] QEMU boot completes in ~20 seconds
+- [x] Screenshot PPM file: 864 KB (> 1 KB threshold)
+- [x] `ZEN_BOOT_OK` signal present in serial log
+- [x] AddressSanitizer errors: 0
+- [x] LeakSanitizer errors: 0
+
+#### Known Issues
+- SceneFX `fx_get_renderer` assertion fails when `WLR_RENDERER=pixman` is used.
+  Compositor must use `WLR_RENDERER=gles2` with Mesa llvmpipe for headless rendering.
+  The compositor currently restarts via systemd `Restart=on-failure`, and the boot
+  signal is emitted before the crash. This will be resolved in Sub-Phase 1.2 by
+  ensuring GLES2 renderer is used consistently.
+
 ### Phase 0: Planning & Project Setup
 
 #### Added
@@ -60,7 +91,7 @@ Versioning follows the milestone scheme defined in [ROADMAP.md](./ROADMAP.md).
 |-----------|-------|--------|
 | Project Scaffolding | 0 | 🟡 In Progress |
 | Boot / OSTree | 1 | ⬜ Not Started |
-| Compositor (wlroots) | 1 | ⬜ Not Started |
+| Compositor (wlroots) | 1 | 🟡 In Progress (Sub-Phase 1.1 done) |
 | Session Manager | 1 | ⬜ Not Started |
 | Shelf | 2 | ⬜ Not Started |
 | App Launcher | 2 | ⬜ Not Started |

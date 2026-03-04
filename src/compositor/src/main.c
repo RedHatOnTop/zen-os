@@ -40,9 +40,9 @@ static const float ZEN_CLEAR_COLOR[4] = {
 
 /* ── Output Handlers ─────────────────────────────────────────────────────── */
 
-static void output_handle_frame(struct wl_listener *listener, void *data) {
+static void output_handle_frame(struct wl_listener *listener,
+                                void *data __attribute__((unused))) {
     struct ZenOutput *output = wl_container_of(listener, output, frame);
-    struct wlr_scene *scene = output->compositor->scene;
     struct wlr_scene_output *scene_output = output->scene_output;
 
     wlr_scene_output_commit(scene_output, NULL);
@@ -60,7 +60,8 @@ static void output_handle_request_state(struct wl_listener *listener,
     wlr_output_commit_state(output->wlr_output, event->state);
 }
 
-static void output_handle_destroy(struct wl_listener *listener, void *data) {
+static void output_handle_destroy(struct wl_listener *listener,
+                                  void *data __attribute__((unused))) {
     struct ZenOutput *output = wl_container_of(listener, output, destroy);
 
     wl_list_remove(&output->frame.link);
@@ -96,7 +97,7 @@ static void handle_new_output(struct wl_listener *listener, void *data) {
     /* Allocate per-output state. */
     struct ZenOutput *output = calloc(1, sizeof(*output));
     if (!output) {
-        wlr_log(WLR_ERROR, "Failed to allocate ZenOutput");
+        wlr_log(WLR_ERROR, "%s", "Failed to allocate ZenOutput");
         return;
     }
 
@@ -142,10 +143,10 @@ static void emit_boot_signal(void) {
         fprintf(serial, "ZEN_BOOT_OK\n");
         fflush(serial);
         fclose(serial);
-        wlr_log(WLR_INFO, "Boot signal emitted: ZEN_BOOT_OK");
+        wlr_log(WLR_INFO, "%s", "Boot signal emitted: ZEN_BOOT_OK");
     } else {
         /* Not fatal — serial port may not exist outside QEMU. */
-        wlr_log(WLR_DEBUG, "Could not open /dev/ttyS0 (not in QEMU?)");
+        wlr_log(WLR_DEBUG, "%s", "Could not open /dev/ttyS0 (not in QEMU?)");
     }
 }
 
@@ -163,7 +164,7 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
     /* 1. Wayland display */
     compositor->wl_display = wl_display_create();
     if (!compositor->wl_display) {
-        wlr_log(WLR_ERROR, "Failed to create wl_display");
+        wlr_log(WLR_ERROR, "%s", "Failed to create wl_display");
         goto cleanup;
     }
 
@@ -172,7 +173,7 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
         wlr_backend_autocreate(wl_display_get_event_loop(compositor->wl_display),
                                NULL);
     if (!compositor->backend) {
-        wlr_log(WLR_ERROR, "Failed to create wlr_backend");
+        wlr_log(WLR_ERROR, "%s", "Failed to create wlr_backend");
         goto cleanup;
     }
 
@@ -184,7 +185,7 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
      */
     compositor->renderer = wlr_renderer_autocreate(compositor->backend);
     if (!compositor->renderer) {
-        wlr_log(WLR_ERROR, "Failed to create renderer");
+        wlr_log(WLR_ERROR, "%s", "Failed to create renderer");
         goto cleanup;
     }
     wlr_renderer_init_wl_display(compositor->renderer,
@@ -195,14 +196,14 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
         wlr_allocator_autocreate(compositor->backend,
                                   compositor->renderer);
     if (!compositor->allocator) {
-        wlr_log(WLR_ERROR, "Failed to create allocator");
+        wlr_log(WLR_ERROR, "%s", "Failed to create allocator");
         goto cleanup;
     }
 
     /* 5. Scene graph */
     compositor->scene = wlr_scene_create();
     if (!compositor->scene) {
-        wlr_log(WLR_ERROR, "Failed to create scene");
+        wlr_log(WLR_ERROR, "%s", "Failed to create scene");
         goto cleanup;
     }
 
@@ -210,7 +211,7 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
     compositor->output_layout =
         wlr_output_layout_create(compositor->wl_display);
     if (!compositor->output_layout) {
-        wlr_log(WLR_ERROR, "Failed to create output layout");
+        wlr_log(WLR_ERROR, "%s", "Failed to create output layout");
         goto cleanup;
     }
 
@@ -219,7 +220,7 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
         wlr_scene_attach_output_layout(compositor->scene,
                                         compositor->output_layout);
     if (!compositor->scene_layout) {
-        wlr_log(WLR_ERROR, "Failed to attach scene to output layout");
+        wlr_log(WLR_ERROR, "%s", "Failed to attach scene to output layout");
         goto cleanup;
     }
 
@@ -245,11 +246,11 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
 
     /* 9. Start the backend */
     if (!wlr_backend_start(compositor->backend)) {
-        wlr_log(WLR_ERROR, "Failed to start backend");
+        wlr_log(WLR_ERROR, "%s", "Failed to start backend");
         goto cleanup;
     }
 
-    wlr_log(WLR_INFO, "Zen OS Compositor initialized successfully");
+    wlr_log(WLR_INFO, "%s", "Zen OS Compositor initialized successfully");
     ret = 0;
 
 cleanup:
@@ -270,7 +271,7 @@ void zen_compositor_run(struct ZenCompositor *compositor) {
         setenv("WAYLAND_DISPLAY", socket, true);
     }
 
-    wlr_log(WLR_INFO, "Entering event loop");
+    wlr_log(WLR_INFO, "%s", "Entering event loop");
     wl_display_run(compositor->wl_display);
 }
 
@@ -304,7 +305,7 @@ void zen_compositor_destroy(struct ZenCompositor *compositor) {
         compositor->wl_display = NULL;
     }
 
-    wlr_log(WLR_INFO, "Compositor destroyed");
+    wlr_log(WLR_INFO, "%s", "Compositor destroyed");
 }
 
 /* ── main ────────────────────────────────────────────────────────────────── */
@@ -316,7 +317,7 @@ int main(int argc, char *argv[]) {
     struct ZenCompositor compositor;
 
     if (zen_compositor_create(&compositor) != 0) {
-        wlr_log(WLR_ERROR, "Failed to initialize compositor");
+        wlr_log(WLR_ERROR, "%s", "Failed to initialize compositor");
         return 1;
     }
 

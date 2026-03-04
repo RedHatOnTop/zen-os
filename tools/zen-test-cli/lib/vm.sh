@@ -143,10 +143,6 @@ vm_start() {
         -serial "file:${serial_log}"
         -pidfile "$pid_file"
         -daemonize
-        # Enable KVM if available (WSL2 with KVM).
-        -enable-kvm
-        # Virtio GPU for display.
-        -device virtio-vga-gl,xres="${width}",yres="${height}"
         # USB controller for hot-plug testing.
         -device qemu-xhci,id=usb-bus
         # Virtio-serial for guest agent communication.
@@ -157,9 +153,19 @@ vm_start() {
         -nic user,model=virtio-net-pci
     )
 
+    # Enable KVM acceleration if available.
+    if [[ -e /dev/kvm ]]; then
+        qemu_args+=(-enable-kvm)
+    else
+        log_warn "KVM not available, falling back to TCG (slow)"
+    fi
+
+    # Select GPU device: use non-GL VGA for headless/WSL2 compatibility.
     if $headless; then
+        qemu_args+=(-device VGA,vgamem_mb=32)
         qemu_args+=(-display none)
     else
+        qemu_args+=(-device "virtio-vga-gl,xres=${width},yres=${height}")
         qemu_args+=(-display "gtk,gl=on")
     fi
 

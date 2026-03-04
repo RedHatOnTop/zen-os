@@ -23,26 +23,27 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 ---
 
-## Phase 0: Planning & Project Setup (Current)
+## Phase 0: Planning & Project Setup
 
 **Goal**: Establish project structure, documentation, build system, interface contracts, and CI pipeline.
 
-**Status**: 🟡 In Progress
+**Status**: 🟡 In Progress (partial — build system and core scaffolding done)
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 0.1 | Root project files (README, LICENSE, .gitignore, meson.build) | ⬜ Not Started |
-| 0.2 | Documentation scaffolding (ROADMAP, CHANGELOG, CONTRIBUTING, ADRs) | ⬜ Not Started |
-| 0.3 | Source directory scaffolding with placeholders | ⬜ Not Started |
-| 0.4 | D-Bus interface XML contracts | ⬜ Not Started |
-| 0.5 | systemd unit file templates | ⬜ Not Started |
-| 0.6 | AppArmor, nftables, polkit, zram config templates | ⬜ Not Started |
-| 0.7 | Icon theme scaffolding | ⬜ Not Started |
-| 0.8 | CI pipeline (GitHub Actions) | ⬜ Not Started |
-| 0.9 | Scaffolding verification checkpoint | ⬜ Not Started |
+| 0.1 | Root project files (meson.build, meson_options.txt, AGENTS.md) | ✅ Complete |
+| 0.2 | Documentation scaffolding (ROADMAP, CHANGELOG) | ✅ Complete |
+| 0.3 | Source directory scaffolding (src/common, src/compositor) | ✅ Complete |
+| 0.4 | Subproject wraps (SceneFX, wlroots, wayland, pixman) | ✅ Complete |
+| 0.5 | D-Bus interface XML contracts | ⬜ Not Started |
+| 0.6 | systemd unit file templates | ⬜ Not Started |
+| 0.7 | AppArmor, nftables, polkit, zram config templates | ⬜ Not Started |
+| 0.8 | Icon theme scaffolding | ⬜ Not Started |
+| 0.9 | CI pipeline (GitHub Actions) | ⬜ Not Started |
+| 0.10 | Scaffolding verification checkpoint | ⬜ Not Started |
 
 **Exit Criteria**:
-- `meson setup builddir` succeeds
+- `meson setup builddir` succeeds ✅
 - All D-Bus XML files are well-formed
 - All systemd units pass `systemd-analyze verify`
 - CI pipeline runs (build + lint + test stubs)
@@ -53,23 +54,23 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 **Goal**: Boot into a minimal Wayland session with window management and user login.
 
-**Estimated Duration**: 6–8 weeks
+**Status**: 🟡 In Progress
 
-| Task | Description | Dependencies | Priority |
-|------|-------------|--------------|----------|
-| 1.1 | OSTree deployment health check and automatic rollback | Phase 0 | P0 |
-| 1.2 | Boot sequence: systemd → OSTree mount → zram → cgroups → logind | Phase 0 | P0 |
-| 1.3 | wlroots + SceneFX compositor init: backend, renderer, wl_display, protocols | Phase 0 | P0 |
-| 1.4 | xdg_shell window lifecycle: map, unmap, configure, close | 1.3 | P0 |
-| 1.5 | Input routing: keyboard, pointer, touch → focused surface | 1.3 | P0 |
-| 1.6 | Multi-monitor: wlr_output_layout, per-display resolution/scaling | 1.3 | P1 |
-| 1.7 | XWayland bridge for legacy X11 apps | 1.3 | P1 |
-| 1.8 | Crash isolation: client disconnect → surface cleanup | 1.4 | P0 |
-| 1.9 | Compositor D-Bus interface (org.zenos.Compositor) | 1.3 | P0 |
-| 1.10 | Session Manager: PAM auth → logind session → compositor start | 1.3 | P0 |
-| 1.11 | Multi-user support: isolated home directories | 1.10 | P1 |
-| 1.12 | Cairo + Pango shell rendering integration: texture buffer pipeline | 1.3 | P0 |
-| 1.13 | Memory budget validation: compositor ≤ 30 MB, shell ≤ 40 MB, total ≤ 70 MB RSS idle | 1.3, 1.12 | P0 |
+| Task | Description | Dependencies | Priority | Status |
+|------|-------------|--------------|----------|--------|
+| 1.1 | **Minimal compositor — empty frame (SceneFX + headless QEMU)** | Phase 0 | P0 | ✅ Complete |
+| 1.2 | OSTree deployment health check and automatic rollback | Phase 0 | P0 | ⬜ |
+| 1.3 | Boot sequence: systemd → OSTree mount → zram → cgroups → logind | Phase 0 | P0 | ⬜ |
+| 1.4 | xdg_shell window lifecycle: map, unmap, configure, close | 1.1 | P0 | ⬜ |
+| 1.5 | Input routing: keyboard, pointer, touch → focused surface | 1.1 | P0 | ⬜ |
+| 1.6 | Multi-monitor: wlr_output_layout, per-display resolution/scaling | 1.1 | P1 | ⬜ |
+| 1.7 | XWayland bridge for legacy X11 apps | 1.1 | P1 | ⬜ |
+| 1.8 | Crash isolation: client disconnect → surface cleanup | 1.4 | P0 | ⬜ |
+| 1.9 | Compositor D-Bus interface (org.zenos.Compositor) | 1.1 | P0 | ⬜ |
+| 1.10 | Session Manager: PAM auth → logind session → compositor start | 1.1 | P0 | ⬜ |
+| 1.11 | Multi-user support: isolated home directories | 1.10 | P1 | ⬜ |
+| 1.12 | Cairo + Pango shell rendering integration: texture buffer pipeline | 1.1 | P0 | ⬜ |
+| 1.13 | Memory budget validation: compositor ≤ 30 MB, shell ≤ 40 MB, total ≤ 70 MB RSS idle | 1.1, 1.12 | P0 | ⬜ |
 
 **Milestone Deliverable**: Boot to login → authenticate → see a Wayland desktop with basic window management.
 

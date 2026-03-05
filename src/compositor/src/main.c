@@ -31,6 +31,8 @@
 #include <wlr/types/wlr_scene.h>
 #include <wlr/util/log.h>
 
+#include <render/fx_renderer/fx_renderer.h>
+
 #include "zen/compositor.h"
 
 /* Zen OS brand color: deep navy (#1a1a2e) */
@@ -179,15 +181,38 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
 
     /* 3. Renderer — SceneFX fx_renderer via wlr_renderer_autocreate.
      *
-     * When SceneFX is linked, wlr_renderer_autocreate() returns an
-     * fx_renderer instance that supports blur/shadow/rounded-corner
-     * effects.  SceneFX overrides the renderer factory at link time.
+     * SceneFX requires a GLES2-backed fx_renderer. Defense-in-depth:
+     *   a) Enforce WLR_RENDERER=gles2 before creation (the systemd unit
+     *      also sets this, but the binary must not rely on it).
+     *   b) After creation, verify the renderer type to avoid the SceneFX
+     *      fx_get_renderer() assertion crash if enforcement somehow fails.
      */
+    const char *renderer_env = getenv("WLR_RENDERER");
+    if (!renderer_env || strcmp(renderer_env, "gles2") != 0) {
+        if (renderer_env) {
+            wlr_log(WLR_ERROR,
+                     "WLR_RENDERER=%s is incompatible with SceneFX, "
+                     "overriding to gles2", renderer_env);
+        } else {
+            wlr_log(WLR_INFO, "%s", "WLR_RENDERER unset, defaulting to "
+                     "gles2 for SceneFX compatibility");
+        }
+        setenv("WLR_RENDERER", "gles2", 1);
+    }
+
     compositor->renderer = wlr_renderer_autocreate(compositor->backend);
     if (!compositor->renderer) {
         wlr_log(WLR_ERROR, "%s", "Failed to create renderer");
         goto cleanup;
     }
+
+    if (!wlr_renderer_is_fx(compositor->renderer)) {
+        wlr_log(WLR_ERROR, "%s", "Renderer is not an fx_renderer — "
+                 "SceneFX requires GLES2. Ensure WLR_RENDERER=gles2 "
+                 "and Mesa is installed.");
+        goto cleanup;
+    }
+
     wlr_renderer_init_wl_display(compositor->renderer,
                                   compositor->wl_display);
 

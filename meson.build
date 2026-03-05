@@ -10,4 +10,17 @@ project('zen-os', 'c',
 )
 
 subdir('src/common')
+subdir('src/shell')
+subdir('src/daemons/resource-manager')
+subdir('src/daemons/privacy-guard')
+subdir('src/daemons/update-manager')
+subdir('src/daemons/package-manager')
+subdir('src/session')
+subdir('src/oobe')
+subdir('src/installer')
 subdir('src/compositor')
+
+if get_option('enable_tests')
+    subdir('tests/unit')
+    subdir('tests/integration')
+endif

@@ -43,6 +43,29 @@ Versioning follows the milestone scheme defined in [ROADMAP.md](./ROADMAP.md).
 ### Phase 0: Planning & Project Setup
 
 #### Added
+- **2026-03-05**: Sub-Phase 0.7 complete — test directory scaffolding
+  - `tests/unit/meson.build`: CMocka dependency, test-dbus-errors executable
+  - `tests/unit/test_dbus_errors.c`: 4 test functions for `zen_error_string()` and `zen_error_dbus_name()`
+  - `tests/integration/meson.build`: Placeholder for future D-Bus integration tests
+  - `tests/integration/test_dbus.c`: Placeholder for inter-component D-Bus tests
+  - Root `meson.build` updated with conditional `enable_tests` test inclusion
+  - `meson_options.txt` updated with `enable_tests` option (default: true)
+  - All 4 unit tests pass under ASan+UBSan
+
+- **2026-03-05**: Sub-Phase 0.6 complete — source scaffolding for all remaining components
+  - `src/shell/`: Shell, Shelf, App Launcher, Quick Settings, Notifications (static library with Cairo + Pango)
+  - `src/daemons/resource-manager/`: PSI monitoring, cgroups, zram, Waydroid lifecycle (libsystemd)
+  - `src/daemons/privacy-guard/`: Telemetry blocking, nftables, audit log (libsystemd)
+  - `src/daemons/update-manager/`: OSTree atomic updates, rollback (libsystemd, libostree)
+  - `src/daemons/package-manager/`: Flatpak + OSTree layering (libsystemd, libostree, libflatpak)
+  - `src/session/`: PAM/logind session management (libsystemd)
+  - `src/oobe/`: Out-of-box experience wizard (Cairo + Pango)
+  - `src/installer/`: Disk partitioning, LUKS encryption, OSTree deployment (Cairo + Pango)
+  - `src/common/include/zen/models.h`: 13 data model structs with init/cleanup functions
+  - `src/common/include/zen/dbus-helpers.h`: sd-bus utility function stubs
+  - All 16 headers use `#ifndef ZEN_<MODULE>_<FILE>_H` include guard pattern
+  - 10 `meson.build` files across src/ — all compile cleanly
+
 - **2026-03-02**: Project inception — requirements document created
   - 16 requirement areas defined: boot/init, compositor, Zen Browser, native apps, Waydroid, privacy, OSTree updates, package management, session management, OOBE, low-end hardware/kiosk, networking, security, accessibility, config persistence, desktop UI/UX
   - Hardware profiles defined: Full Desktop (4 GB+) and Kiosk/Low-End (2 GB)
@@ -60,7 +83,7 @@ Versioning follows the milestone scheme defined in [ROADMAP.md](./ROADMAP.md).
 - **2026-03-02**: Planning phase initiated
   - Design document refocused to planning & project setup
   - Implementation task list created for scaffolding phase
-  - Development roadmap created (10 phases, ~9–12 months to v1.0.0)
+  - Development roadmap created (11 phases, 0–10, each gated by quality gates)
   - Changelog created to track implementation status
 
 #### Pending

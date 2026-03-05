@@ -4,6 +4,8 @@ zen_common_inc = include_directories('include')
 
 zen_common_src = files(
     'src/dbus-errors.c',
+    'src/dbus-helpers.c',
+    'src/models.c',
 )
 
 zen_common_lib = static_library('zen-common',

@@ -2,3 +2,5 @@ option('enable_waydroid', type: 'boolean', value: true,
     description: 'Enable Waydroid Android container support')
 option('enable_kiosk', type: 'boolean', value: false,
     description: 'Enable kiosk single-app fullscreen mode')
+option('enable_tests', type: 'boolean', value: true,
+    description: 'Build and register unit and integration tests')

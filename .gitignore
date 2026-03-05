@@ -27,3 +27,6 @@ subprojects/packagecache/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Misc
+wget-log*

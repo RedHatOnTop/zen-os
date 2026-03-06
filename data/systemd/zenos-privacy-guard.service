@@ -1,0 +1,15 @@
+[Unit]
+Description=Zen OS Privacy Guard Daemon
+Documentation=https://github.com/nicejin/zen-os
+After=network-pre.target
+Before=network.target
+
+[Service]
+Type=dbus
+BusName=org.zenos.PrivacyGuard
+ExecStart=/usr/libexec/zenos-privacy-guard
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,55 @@
+#!/usr/sbin/nft -f
+#
+# Zen OS default firewall rules
+# Default-deny inbound, allow established/related, allow loopback.
+# Privacy Guard manages outbound filtering dynamically.
+
+flush ruleset
+
+table inet filter {
+
+    chain input {
+        type filter hook input priority 0; policy drop;
+
+        # Allow loopback traffic
+        iif "lo" accept
+
+        # Allow established and related connections
+        ct state established,related accept
+
+        # Drop invalid packets
+        ct state invalid drop
+
+        # Allow ICMP (ping) for diagnostics
+        ip protocol icmp accept
+        ip6 nexthdr icmpv6 accept
+
+        # Allow DHCPv6 client
+        udp dport 546 accept
+
+        # Log and drop everything else
+        log prefix "zenos-fw-drop: " drop
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+
+        # Allow forwarding for Waydroid container (when active)
+        # Specific rules added dynamically by Resource Manager
+    }
+
+    chain output {
+        type filter hook output priority 0; policy accept;
+
+        # Allow loopback
+        oif "lo" accept
+
+        # Allow established and related
+        ct state established,related accept
+
+        # --- Privacy Guard placeholder ---
+        # Privacy Guard daemon inserts blocking rules here at runtime
+        # via nft commands to drop telemetry/tracking destinations.
+        # Example: nft add rule inet filter output ip daddr @blocked_hosts drop
+    }
+}

@@ -1,0 +1,42 @@
+# AppArmor profile for Zen OS Privacy Guard
+# Restricts to nftables management, privacy config, and audit logging.
+
+abi <abi/4.0>,
+
+include <tunables/global>
+
+profile zenos-privacy-guard /usr/bin/zenos-privacy-guard {
+  include <abstractions/base>
+  include <abstractions/nameservice>
+
+  # --- Capabilities ---
+  capability net_admin,
+  capability net_raw,
+
+  # --- Privacy Guard binary ---
+  /usr/bin/zenos-privacy-guard mr,
+
+  # --- nftables ---
+  /usr/sbin/nft             ix,
+  /etc/nftables.conf        r,
+  /etc/zenos/nftables/**    r,
+
+  # --- Privacy configuration ---
+  /etc/zenos/privacy/**     rw,
+
+  # --- Audit log ---
+  /var/log/zenos/           rw,
+  /var/log/zenos/**         rw,
+
+  # --- Shared libraries ---
+  /usr/lib/**               mr,
+  /usr/lib64/**             mr,
+
+  # --- D-Bus system bus ---
+  /run/dbus/system_bus_socket rw,
+
+  # --- Deny sensitive paths ---
+  deny /etc/shadow r,
+  deny /etc/gshadow r,
+  deny @{HOME}/** rw,
+}

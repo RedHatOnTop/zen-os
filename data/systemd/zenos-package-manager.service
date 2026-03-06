@@ -1,0 +1,15 @@
+[Unit]
+Description=Zen OS Package Manager Daemon
+Documentation=https://github.com/nicejin/zen-os
+After=zenos-update-manager.service
+Wants=zenos-update-manager.service
+
+[Service]
+Type=dbus
+BusName=org.zenos.PackageManager
+ExecStart=/usr/libexec/zenos-package-manager
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

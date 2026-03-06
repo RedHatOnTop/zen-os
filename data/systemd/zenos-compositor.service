@@ -1,0 +1,18 @@
+[Unit]
+Description=Zen OS Wayland Compositor
+Documentation=https://github.com/nicejin/zen-os
+After=systemd-logind.service
+Requires=systemd-logind.service
+ConditionPathExists=/dev/dri/card0
+Conflicts=zenos-headless.target
+
+[Service]
+Type=simple
+Environment=WLR_RENDERER=gles2
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+ExecStart=/usr/bin/zen-compositor
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical.target

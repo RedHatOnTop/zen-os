@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+    "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<!--
+  Zen OS — Package Manager D-Bus Interface
+
+  Manages Flatpak application installs/removals and OSTree package layering.
+  Flatpak is the primary application delivery format; layering provides
+  system-level packages on top of the immutable base.
+
+  Bus name : org.zenos.PackageManager
+  Object   : /org/zenos/PackageManager
+
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<node name="/org/zenos/PackageManager">
+  <interface name="org.zenos.PackageManager">
+
+    <annotation name="org.freedesktop.DBus.Description"
+                value="Zen OS package manager — Flatpak and OSTree layered packages"/>
+
+    <!-- ── Flatpak operations ────────────────────────────────────────── -->
+
+    <method name="InstallFlatpak">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Install a Flatpak application from the configured remote"/>
+      <arg name="ref"     type="s" direction="in"/>
+      <arg name="remote"  type="s" direction="in"/>
+      <arg name="success" type="b" direction="out"/>
+    </method>
+
+    <method name="RemoveFlatpak">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Remove an installed Flatpak application"/>
+      <arg name="ref"     type="s" direction="in"/>
+      <arg name="success" type="b" direction="out"/>
+    </method>
+
+    <!-- ── OSTree layered packages ───────────────────────────────────── -->
+
+    <method name="LayerPackage">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Layer a system package on top of the immutable OSTree base"/>
+      <arg name="package_name" type="s" direction="in"/>
+      <arg name="success"      type="b" direction="out"/>
+    </method>
+
+    <method name="UnlayerPackage">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Remove a previously layered system package"/>
+      <arg name="package_name" type="s" direction="in"/>
+      <arg name="success"      type="b" direction="out"/>
+    </method>
+
+    <!-- ── Query operations ──────────────────────────────────────────── -->
+
+    <method name="ListInstalled">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="List all installed packages (Flatpak + layered) with metadata"/>
+      <!-- Array of structs: (name, version, source, description, size_bytes) -->
+      <arg name="packages" type="a(ssssx)" direction="out"/>
+    </method>
+
+    <method name="Search">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Search for packages matching a query string across all sources"/>
+      <arg name="query"   type="s"       direction="in"/>
+      <arg name="results" type="a(ssssx)" direction="out"/>
+    </method>
+
+    <!-- ── Signals ───────────────────────────────────────────────────── -->
+
+    <signal name="PackageInstalled">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Emitted when a package installation completes"/>
+      <arg name="name"    type="s"/>
+      <arg name="version" type="s"/>
+      <arg name="source"  type="s"/>
+    </signal>
+
+    <signal name="PackageRemoved">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Emitted when a package removal completes"/>
+      <arg name="name"   type="s"/>
+      <arg name="source" type="s"/>
+    </signal>
+
+  </interface>
+</node>

@@ -1,0 +1,44 @@
+# AppArmor profile for Zen OS Package Manager
+# Restricts to Flatpak operations, OSTree layering, and network access.
+
+abi <abi/4.0>,
+
+include <tunables/global>
+
+profile zenos-package-manager /usr/bin/zenos-package-manager {
+  include <abstractions/base>
+  include <abstractions/nameservice>
+
+  # --- Capabilities ---
+  capability sys_admin,
+  capability dac_override,
+
+  # --- Package Manager binary ---
+  /usr/bin/zenos-package-manager mr,
+
+  # --- Flatpak ---
+  /var/lib/flatpak/**     rw,
+  /usr/bin/flatpak        ix,
+
+  # --- OSTree (for native package layering) ---
+  /ostree/**              rw,
+  /sysroot/ostree/**      rw,
+
+  # --- Network access for remote fetches ---
+  network inet stream,
+  network inet dgram,
+  network inet6 stream,
+  network inet6 dgram,
+
+  # --- Shared libraries ---
+  /usr/lib/**             mr,
+  /usr/lib64/**           mr,
+
+  # --- D-Bus system bus ---
+  /run/dbus/system_bus_socket rw,
+
+  # --- Deny sensitive paths ---
+  deny /etc/shadow r,
+  deny /etc/gshadow r,
+  deny @{HOME}/** rw,
+}

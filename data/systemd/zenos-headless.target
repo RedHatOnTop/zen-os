@@ -1,0 +1,9 @@
+[Unit]
+Description=Zen OS Headless Mode (No Compositor)
+Documentation=https://github.com/nicejin/zen-os
+AllowIsolate=yes
+Conflicts=zenos-compositor.service
+After=multi-user.target
+
+[Install]
+WantedBy=multi-user.target

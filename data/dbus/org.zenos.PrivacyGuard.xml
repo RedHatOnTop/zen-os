@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+    "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<!--
+  Zen OS — Privacy Guard D-Bus Interface
+
+  System-level network privacy daemon.  Uses nftables and DNS-level
+  blocking to prevent telemetry, tracking, and unwanted outbound
+  connections.  Maintains an audit log that the shell can query.
+
+  Bus name : org.zenos.PrivacyGuard
+  Object   : /org/zenos/PrivacyGuard
+
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<node name="/org/zenos/PrivacyGuard">
+  <interface name="org.zenos.PrivacyGuard">
+
+    <annotation name="org.freedesktop.DBus.Description"
+                value="Zen OS network privacy guard — telemetry and tracker blocking"/>
+
+    <!-- ── Methods ───────────────────────────────────────────────────── -->
+
+    <method name="GetBlockedRequests">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Return recent blocked network requests with metadata"/>
+      <arg name="limit"    type="i" direction="in"/>
+      <!-- Array of structs: (timestamp, source_app, destination, rule_matched, protocol) -->
+      <arg name="requests" type="a(xsssi)" direction="out"/>
+    </method>
+
+    <method name="GetAuditLog">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Return audit log entries for privacy events"/>
+      <arg name="since_timestamp" type="x" direction="in"/>
+      <arg name="limit"           type="i" direction="in"/>
+      <!-- Array of structs: (timestamp, event_type, details, source_app) -->
+      <arg name="entries" type="a(xiss)" direction="out"/>
+    </method>
+
+    <method name="ReloadRules">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Reload blocklists and nftables rules from disk"/>
+      <arg name="success"       type="b" direction="out"/>
+      <arg name="rules_loaded"  type="i" direction="out"/>
+    </method>
+
+    <!-- ── Signals ───────────────────────────────────────────────────── -->
+
+    <signal name="RequestBlocked">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Emitted when an outbound network request is blocked"/>
+      <arg name="source_app"   type="s"/>
+      <arg name="destination"  type="s"/>
+      <arg name="rule_matched" type="s"/>
+      <arg name="protocol"     type="i"/>
+    </signal>
+
+  </interface>
+</node>

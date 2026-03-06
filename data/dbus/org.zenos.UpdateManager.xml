@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+    "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<!--
+  Zen OS — Update Manager D-Bus Interface
+
+  Manages atomic OS updates via OSTree.  The daemon pulls new commits,
+  stages deployments, and offers rollback.  Security-only updates are
+  flagged separately so the shell can show a high-priority badge.
+
+  Bus name : org.zenos.UpdateManager
+  Object   : /org/zenos/UpdateManager
+
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<node name="/org/zenos/UpdateManager">
+  <interface name="org.zenos.UpdateManager">
+
+    <annotation name="org.freedesktop.DBus.Description"
+                value="Zen OS atomic update manager (OSTree-based)"/>
+
+    <!-- ── Methods ───────────────────────────────────────────────────── -->
+
+    <method name="CheckForUpdates">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Pull metadata from the configured OSTree remote and check for a newer commit"/>
+      <arg name="available" type="b" direction="out"/>
+      <arg name="version"   type="s" direction="out"/>
+      <arg name="commit"    type="s" direction="out"/>
+      <arg name="delta_size_bytes" type="x" direction="out"/>
+      <arg name="is_security"      type="b" direction="out"/>
+    </method>
+
+    <method name="ApplyUpdate">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Stage the pending update and prepare the new deployment for next boot"/>
+      <arg name="commit"  type="s" direction="in"/>
+      <arg name="success" type="b" direction="out"/>
+    </method>
+
+    <method name="Rollback">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Roll back to the previous OSTree deployment"/>
+      <arg name="success" type="b" direction="out"/>
+    </method>
+
+    <method name="GetDeployments">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="List all OSTree deployments with their metadata"/>
+      <!-- Array of structs: (index, commit, version, timestamp, is_active, is_pinned) -->
+      <arg name="deployments" type="a(issxbb)" direction="out"/>
+    </method>
+
+    <method name="GetSecurityUpdates">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="List only security-flagged updates available from the remote"/>
+      <!-- Array of structs: (commit, version, delta_size_bytes, changelog) -->
+      <arg name="updates" type="a(ssxs)" direction="out"/>
+    </method>
+
+    <!-- ── Signals ───────────────────────────────────────────────────── -->
+
+    <signal name="UpdateAvailable">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Emitted when a new OS update is detected"/>
+      <arg name="version"     type="s"/>
+      <arg name="commit"      type="s"/>
+      <arg name="is_security" type="b"/>
+    </signal>
+
+    <signal name="DeploymentChanged">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Emitted when the active deployment changes (apply/rollback)"/>
+      <arg name="active_commit"  type="s"/>
+      <arg name="active_version" type="s"/>
+    </signal>
+
+  </interface>
+</node>

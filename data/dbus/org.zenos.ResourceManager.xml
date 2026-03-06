@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+    "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<!--
+  Zen OS — Resource Manager D-Bus Interface
+
+  Monitors system resource pressure (PSI), manages cgroups v2 budgets,
+  and controls container lifecycle (Waydroid freeze/thaw).  Provides
+  memory pressure alerts so the shell can prompt the user before OOM
+  conditions arise.
+
+  Bus name : org.zenos.ResourceManager
+  Object   : /org/zenos/ResourceManager
+
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<node name="/org/zenos/ResourceManager">
+  <interface name="org.zenos.ResourceManager">
+
+    <annotation name="org.freedesktop.DBus.Description"
+                value="Zen OS resource manager — PSI monitoring, cgroups, zram, Waydroid"/>
+
+    <!-- ── PSI / Memory monitoring ───────────────────────────────────── -->
+
+    <method name="GetMemoryPressure">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Return current PSI memory pressure statistics"/>
+      <arg name="some_avg10"     type="d" direction="out"/>
+      <arg name="some_avg60"     type="d" direction="out"/>
+      <arg name="some_avg300"    type="d" direction="out"/>
+      <arg name="full_avg10"     type="d" direction="out"/>
+      <arg name="full_avg60"     type="d" direction="out"/>
+      <arg name="full_avg300"    type="d" direction="out"/>
+      <arg name="total_stall_us" type="x" direction="out"/>
+    </method>
+
+    <!-- ── Container lifecycle ───────────────────────────────────────── -->
+
+    <method name="FreezeContainer">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Freeze a container cgroup (e.g., Waydroid) to reclaim resources"/>
+      <arg name="cgroup_path" type="s" direction="in"/>
+      <arg name="success"     type="b" direction="out"/>
+    </method>
+
+    <method name="ThawContainer">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Thaw a previously frozen container cgroup"/>
+      <arg name="cgroup_path" type="s" direction="in"/>
+      <arg name="success"     type="b" direction="out"/>
+    </method>
+
+    <!-- ── Budget management ─────────────────────────────────────────── -->
+
+    <method name="GetResourceBudgets">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="List all configured cgroup resource budgets"/>
+      <!-- Array of structs: (cgroup_path, memory_limit_bytes, cpu_weight, is_frozen) -->
+      <arg name="budgets" type="a(sxib)" direction="out"/>
+    </method>
+
+    <!-- ── Waydroid control ──────────────────────────────────────────── -->
+
+    <method name="SetWaydroidEnabled">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Enable or disable the Waydroid Android container"/>
+      <arg name="enabled" type="b" direction="in"/>
+      <arg name="success" type="b" direction="out"/>
+    </method>
+
+    <!-- ── Signals ───────────────────────────────────────────────────── -->
+
+    <signal name="MemoryPressureAlert">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Emitted when memory pressure exceeds a configured threshold"/>
+      <arg name="level"       type="s"/>
+      <arg name="some_avg10"  type="d"/>
+      <arg name="full_avg10"  type="d"/>
+    </signal>
+
+    <signal name="ContainerStateChanged">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Emitted when a container is frozen or thawed"/>
+      <arg name="cgroup_path" type="s"/>
+      <arg name="is_frozen"   type="b"/>
+    </signal>
+
+  </interface>
+</node>

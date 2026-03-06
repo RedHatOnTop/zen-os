@@ -1,0 +1,42 @@
+# AppArmor profile for Zen OS Resource Manager
+# Restricts to cgroups v2, PSI interface, and zram devices.
+
+abi <abi/4.0>,
+
+include <tunables/global>
+
+profile zenos-resource-manager /usr/bin/zenos-resource-manager {
+  include <abstractions/base>
+
+  # --- Capabilities ---
+  capability sys_resource,
+  capability sys_admin,
+
+  # --- Resource Manager binary ---
+  /usr/bin/zenos-resource-manager mr,
+
+  # --- cgroups v2 ---
+  /sys/fs/cgroup/**       rw,
+
+  # --- PSI (Pressure Stall Information) ---
+  @{PROC}/pressure/*      r,
+
+  # --- zram devices ---
+  /sys/block/zram*/**     rw,
+  /dev/zram*              rw,
+
+  # --- Memory info ---
+  @{PROC}/meminfo         r,
+
+  # --- Shared libraries ---
+  /usr/lib/**             mr,
+  /usr/lib64/**           mr,
+
+  # --- D-Bus system bus ---
+  /run/dbus/system_bus_socket rw,
+
+  # --- Deny sensitive paths ---
+  deny /etc/shadow r,
+  deny /etc/gshadow r,
+  deny @{HOME}/** rw,
+}

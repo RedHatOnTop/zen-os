@@ -1,0 +1,55 @@
+# AppArmor profile for Zen OS Compositor (wlroots + SceneFX)
+# Restricts the compositor to Wayland sockets, DRI/GPU devices,
+# input devices, fonts, and icons.
+
+abi <abi/4.0>,
+
+include <tunables/global>
+
+profile zenos-compositor /usr/bin/zen-compositor {
+  include <abstractions/base>
+
+  # --- Capabilities ---
+  capability sys_nice,
+  capability setuid,
+  capability setgid,
+
+  # --- Wayland socket ---
+  owner /run/user/*/wayland-* rw,
+
+  # --- DRI / GPU devices ---
+  /dev/dri/card*    rw,
+  /dev/dri/renderD* rw,
+
+  # --- Input devices ---
+  /dev/input/event* r,
+  /dev/input/mice   r,
+
+  # --- Fonts ---
+  /usr/share/fonts/**  r,
+
+  # --- Icons and themes ---
+  /usr/share/icons/** r,
+
+  # --- Compositor binary ---
+  /usr/bin/zen-compositor mr,
+
+  # --- Shared libraries ---
+  /usr/lib/**           mr,
+  /usr/lib64/**         mr,
+
+  # --- System information ---
+  @{PROC}/meminfo       r,
+  @{PROC}/cpuinfo       r,
+  /sys/devices/**       r,
+
+  # --- XKB keyboard configuration ---
+  /usr/share/X11/xkb/** r,
+
+  # --- User config ---
+  owner @{HOME}/.config/zenos/** rw,
+
+  # --- Deny everything else ---
+  deny /etc/shadow r,
+  deny /etc/gshadow r,
+}

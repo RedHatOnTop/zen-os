@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+    "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<!--
+  Zen OS — Compositor D-Bus Interface
+
+  The Compositor owns the Wayland display and the in-process desktop shell.
+  This interface exposes shell actions (app launch, shelf management,
+  notifications, theming) over the system bus so that other Zen OS
+  daemons and CLI tools can drive the desktop without linking to wlroots.
+
+  Bus name : org.zenos.Compositor
+  Object   : /org/zenos/Compositor
+
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<node name="/org/zenos/Compositor">
+  <interface name="org.zenos.Compositor">
+
+    <annotation name="org.freedesktop.DBus.Description"
+                value="Zen OS compositor and in-process desktop shell interface"/>
+
+    <!-- ── Application lifecycle ─────────────────────────────────────── -->
+
+    <method name="LaunchApp">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Launch an application by its reverse-domain app_id"/>
+      <arg name="app_id"  type="s" direction="in"/>
+      <arg name="success" type="b" direction="out"/>
+    </method>
+
+    <method name="GetRunningApps">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Return array of currently running application IDs"/>
+      <arg name="app_ids" type="as" direction="out"/>
+    </method>
+
+    <!-- ── Shelf management ──────────────────────────────────────────── -->
+
+    <method name="PinToShelf">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Pin an application to the Shelf taskbar"/>
+      <arg name="app_id"  type="s" direction="in"/>
+      <arg name="success" type="b" direction="out"/>
+    </method>
+
+    <method name="UnpinFromShelf">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Unpin an application from the Shelf taskbar"/>
+      <arg name="app_id"  type="s" direction="in"/>
+      <arg name="success" type="b" direction="out"/>
+    </method>
+
+    <method name="SetShelfConfig">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Apply a new Shelf configuration (position, auto-hide, icon size)"/>
+      <arg name="position"  type="s" direction="in"/>
+      <arg name="auto_hide" type="b" direction="in"/>
+      <arg name="icon_size" type="i" direction="in"/>
+      <arg name="success"   type="b" direction="out"/>
+    </method>
+
+    <!-- ── Theming ───────────────────────────────────────────────────── -->
+
+    <method name="ToggleDarkMode">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Toggle system-wide dark mode and trigger shell redraw"/>
+      <arg name="enabled"    type="b" direction="in"/>
+      <arg name="now_active" type="b" direction="out"/>
+    </method>
+
+    <!-- ── Notifications ─────────────────────────────────────────────── -->
+
+    <method name="ShowNotification">
+      <annotation name="org.freedesktop.DBus.Description"
+                  value="Display a notification toast on the desktop"/>
+      <arg name="app_id"     type="s" direction="in"/>
+      <arg name="summary"    type="s" direction="in"/>
+      <arg name="body"       type="s" direction="in"/>
+      <arg name="icon"       type="s" direction="in"/>
+      <arg name="urgency"    type="i" direction="in"/>
+      <arg name="timeout_ms" type="i" direction="in"/>
+      <arg name="notif_id"   type="i" direction="out"/>
+    </method>
+
+  </interface>
+</node>

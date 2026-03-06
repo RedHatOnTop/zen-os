@@ -1,0 +1,47 @@
+# AppArmor profile for Zen OS Session Manager
+# Restricts to PAM authentication, logind socket, and user account files.
+
+abi <abi/4.0>,
+
+include <tunables/global>
+
+profile zenos-session /usr/bin/zenos-session {
+  include <abstractions/base>
+  include <abstractions/authentication>
+  include <abstractions/nameservice>
+
+  # --- Capabilities ---
+  capability setuid,
+  capability setgid,
+  capability chown,
+  capability dac_override,
+
+  # --- Session Manager binary ---
+  /usr/bin/zenos-session mr,
+
+  # --- PAM ---
+  /etc/pam.d/**          r,
+  /lib/security/**       mr,
+  /usr/lib/security/**   mr,
+
+  # --- User account files ---
+  /etc/passwd            r,
+  /etc/shadow            r,
+  /etc/group             r,
+  /etc/gshadow           r,
+
+  # --- logind socket ---
+  /run/systemd/logind/** rw,
+  /run/dbus/system_bus_socket rw,
+
+  # --- OOBE flag ---
+  /var/lib/zenos/oobe-complete rw,
+
+  # --- Shared libraries ---
+  /usr/lib/**            mr,
+  /usr/lib64/**          mr,
+
+  # --- Deny broad access ---
+  deny /ostree/** rw,
+  deny /var/lib/flatpak/** rw,
+}

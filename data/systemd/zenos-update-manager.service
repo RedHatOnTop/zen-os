@@ -1,0 +1,15 @@
+[Unit]
+Description=Zen OS Update Manager Daemon
+Documentation=https://github.com/nicejin/zen-os
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=dbus
+BusName=org.zenos.UpdateManager
+ExecStart=/usr/libexec/zenos-update-manager
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

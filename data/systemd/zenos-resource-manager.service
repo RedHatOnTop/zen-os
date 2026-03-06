@@ -1,0 +1,15 @@
+[Unit]
+Description=Zen OS Resource Manager Daemon
+Documentation=https://github.com/nicejin/zen-os
+After=local-fs.target
+Before=zenos-compositor.service
+
+[Service]
+Type=dbus
+BusName=org.zenos.ResourceManager
+ExecStart=/usr/libexec/zenos-resource-manager
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical.target

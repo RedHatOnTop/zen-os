@@ -1,0 +1,23 @@
+// Zen OS polkit rules
+// Require explicit user authentication for privileged operations.
+
+// Rule 1: Package Manager operations require admin authentication
+polkit.addRule(function(action, subject) {
+    if (action.id.indexOf("org.zenos.PackageManager.") === 0) {
+        return polkit.Result.AUTH_ADMIN;
+    }
+});
+
+// Rule 2: Applying OS updates requires admin authentication
+polkit.addRule(function(action, subject) {
+    if (action.id === "org.zenos.UpdateManager.ApplyUpdate") {
+        return polkit.Result.AUTH_ADMIN;
+    }
+});
+
+// Rule 3: Enabling/disabling Waydroid requires admin authentication
+polkit.addRule(function(action, subject) {
+    if (action.id === "org.zenos.ResourceManager.SetWaydroidEnabled") {
+        return polkit.Result.AUTH_ADMIN;
+    }
+});

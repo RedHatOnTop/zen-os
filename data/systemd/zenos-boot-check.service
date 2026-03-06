@@ -1,0 +1,14 @@
+[Unit]
+Description=Zen OS Boot Health Check (OSTree)
+Documentation=https://github.com/nicejin/zen-os
+DefaultDependencies=no
+Before=sysinit.target
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/zenos-boot-check
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target

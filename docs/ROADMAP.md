@@ -426,12 +426,12 @@ Zen OS follows a milestone-based versioning scheme during development:
 - **Tasks**:
   - Create `src/compositor/src/dbus.c` — implement sd-bus interface registration and method handlers
   - Create `src/compositor/include/zen/dbus.h` — D-Bus interface declarations
-  - Implement methods: LaunchApp, GetRunningApps, ToggleDarkMode, ShowNotification (stubs for PinToShelf, SetShelfConfig until shell exists)
+  - Implement all methods defined in `data/dbus/org.zenos.Compositor.xml`: LaunchApp, GetRunningApps, PinToShelf, UnpinFromShelf, SetShelfConfig, ToggleDarkMode, ShowNotification (stubs for shelf-related methods until shell exists)
   - Add libsystemd (sd-bus) dependency to compositor meson.build
   - Connect sd-bus event loop to wl_event_loop
 - **Quality Gate**:
-  - [ ] `busctl introspect org.zenos.Compositor /org/zenos/Compositor` shows all methods from the XML contract
-  - [ ] `busctl call org.zenos.Compositor /org/zenos/Compositor org.zenos.Compositor ToggleDarkMode b true` returns without error
+  - [ ] `busctl --user introspect org.zenos.Compositor /org/zenos/Compositor` shows all methods from the XML contract
+  - [ ] `busctl --user call org.zenos.Compositor /org/zenos/Compositor org.zenos.Compositor ToggleDarkMode b true` returns without error
   - [ ] D-Bus interface name matches `data/dbus/org.zenos.Compositor.xml` exactly
   - [ ] ASan reports 0 errors after D-Bus method calls
 

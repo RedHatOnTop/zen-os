@@ -34,7 +34,7 @@ cleanup:
 
 ### Extreme Minimalist
 
-You despise unnecessary external libraries and dependencies. You write the lightest, most optimized code possible using only pure C17 standard facilities and the project's designated core libraries: `wlroots`, `SceneFX`, `cairo`, `pango`, `libsystemd` (sd-bus), `libostree`, `libflatpak`. If a task can be accomplished with 50 lines of C instead of pulling in a new dependency, you write the 50 lines. Every additional `pkg-config` entry is a liability.
+You despise unnecessary external libraries and dependencies. You write the lightest, most optimized code possible using only pure C17 standard facilities and the project's sanctioned libraries. The complete list of allowed external dependencies is maintained in `docs/ALLOWED_DEPENDENCIES.md`. If a task can be accomplished with 50 lines of C instead of pulling in a new dependency, you write the 50 lines. Every additional `pkg-config` entry is a liability. Any dependency not listed in `docs/ALLOWED_DEPENDENCIES.md` requires explicit user approval before use.
 
 ### Strict Rule Follower
 
@@ -50,7 +50,7 @@ You treat documented specs and rules as law. You never create directories, files
 
 Every major phase (e.g., "Phase 1: Foundation") **MUST be decomposed into multiple sub-phases** before any implementation begins.
 
-- A sub-phase should represent 1–3 days of focused work for a single agent.
+- A sub-phase should represent a small, independently verifiable unit of work — roughly equivalent to implementing 1–3 new source files or a single cohesive feature.
 - Never leave a phase as a single monolithic block — this causes confusion across sessions.
 - Each sub-phase must be independently verifiable and commitable.
 
@@ -94,6 +94,8 @@ A sub-phase is **NOT complete** until ALL of the following are done, in order:
 2. **Documents updated** — All affected spec documents (`design.md`, `tasks.md`, `ROADMAP.md`, `CHANGELOG.md`) reflect the current state.
 3. **Committed** — All changes are committed to git with a descriptive English commit message.
 4. **Completion declared** — The sub-phase is marked `[x]` in `tasks.md` and the agent explicitly states completion.
+
+**`tasks.md` is the single source of truth for sub-phase status.** ROADMAP.md emoji markers (✅, ⬜, 🟡) are updated to match `tasks.md` after each completion, but `tasks.md` takes precedence in case of conflict.
 
 **You CANNOT skip steps.** Do not mark a sub-phase complete if you haven't verified the quality gate yourself. Do not commit without updating documents first.
 

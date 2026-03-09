@@ -1,0 +1,19 @@
+/*
+ * Zen OS — Browser visual identity overlay
+ * Injected at session start via /etc/zenos/browser/userChrome.css
+ *
+ * Provides minimal Zen OS branding that adapts to the system
+ * dark/light mode. Full theming is applied in later phases.
+ */
+
+/* Tab bar background — matches Zen OS shell palette */
+#TabsToolbar {
+    background-color: #1a1a2e !important;
+}
+
+/* Light mode override via prefers-color-scheme */
+@media (prefers-color-scheme: light) {
+    #TabsToolbar {
+        background-color: #e8e8f0 !important;
+    }
+}

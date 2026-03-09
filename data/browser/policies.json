@@ -1,0 +1,54 @@
+{
+    "policies": {
+        "DisableTelemetry": true,
+        "DisableFirefoxStudies": true,
+        "DisablePocket": true,
+        "OverrideFirstRunPage": "",
+        "OverridePostUpdatePage": "",
+        "DontCheckDefaultBrowser": true,
+        "DisplayBookmarksToolbar": false,
+        "NetworkPrediction": false,
+        "FirefoxSuggest": {
+            "WebSuggestions": false,
+            "SponsoredSuggestions": false,
+            "ImproveSuggest": false
+        },
+        "UserMessaging": {
+            "WhatsNew": false,
+            "ExtensionRecommendations": false,
+            "FeatureRecommendations": false,
+            "UrlbarInterventions": false,
+            "SkipOnboarding": true,
+            "MoreFromMozilla": false
+        },
+        "Preferences": {
+            "datareporting.healthreport.uploadEnabled": {
+                "Value": false,
+                "Status": "locked"
+            },
+            "toolkit.telemetry.enabled": {
+                "Value": false,
+                "Status": "locked"
+            },
+            "app.shield.optoutstudies.enabled": {
+                "Value": false,
+                "Status": "locked"
+            },
+            "browser.crashReports.unsubmittedCheck.autoSubmit2": {
+                "Value": false,
+                "Status": "locked"
+            },
+            "browser.newtabpage.activity-stream.showSponsoredTopSites": {
+                "Value": false,
+                "Status": "locked"
+            },
+            "browser.newtabpage.activity-stream.showSponsored": {
+                "Value": false,
+                "Status": "locked"
+            }
+        },
+        "SearchEngines": {
+            "Default": "DuckDuckGo"
+        }
+    }
+}

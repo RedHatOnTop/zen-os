@@ -27,9 +27,9 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 **Goal**: Establish project structure, documentation, build system, interface contracts, configuration templates, and CI pipeline so that implementation phases can proceed cleanly.
 
-**Status**: 🟡 In Progress (Sub-Phases 0.1–0.7 complete; 0.8–0.15 remain)
+**Status**: ✅ Complete (All Sub-Phases 0.1–0.15 verified)
 
-> **Note**: Sub-Phase 1.1 (Minimal Compositor — Empty Frame) was completed ahead of Phase 0 as a proof-of-concept to validate the wlroots + SceneFX stack. Phase 0 remaining sub-phases (0.6–0.15) must be completed before Phase 1 continues beyond 1.1.
+> **Note**: Sub-Phase 1.1 (Minimal Compositor — Empty Frame) was completed ahead of Phase 0 as a proof-of-concept to validate the wlroots + SceneFX stack. Phase 0 is now complete (all sub-phases 0.1–0.15 verified).
 
 ### Sub-Phase 0.1: Root Project Files and Build System ✅
 
@@ -133,7 +133,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [x] `meson test -C builddir --suite unit` exits 0 with 1 test passed (4 sub-tests)
   - [x] `tests/integration/meson.build` exists
 
-### Sub-Phase 0.8: D-Bus Interface Contracts ⬜
+### Sub-Phase 0.8: D-Bus Interface Contracts ✅
 
 - **Goal**: All 5 D-Bus XML interface definitions exist under data/dbus/ and are well-formed XML.
 - **Tasks**:
@@ -145,13 +145,13 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Each XML file must include `<node>`, `<interface>`, `<method>`, `<arg>` elements with `name`, `type`, and `direction` attributes
   - Each XML file must include `<annotation>` elements documenting the interface purpose
 - **Quality Gate**:
-  - [ ] All 5 XML files exist under `data/dbus/`
-  - [ ] `xmllint --noout data/dbus/*.xml` exits 0 for all files (well-formed XML)
-  - [ ] Each XML file contains at least one `<interface>` element with `name` attribute starting with `org.zenos.`
-  - [ ] Each `<method>` element has at least one `<arg>` child with `type` and `direction` attributes
-  - [ ] `grep -c '<method' data/dbus/*.xml | awk -F: '{sum+=$2} END {print sum}'` returns ≥ 20 (total methods across all interfaces)
+  - [x] All 5 XML files exist under `data/dbus/`
+  - [x] `xmllint --noout data/dbus/*.xml` exits 0 for all files (well-formed XML)
+  - [x] Each XML file contains at least one `<interface>` element with `name` attribute starting with `org.zenos.`
+  - [x] Each `<method>` element has at least one `<arg>` child with `type` and `direction` attributes
+  - [x] `grep -c '<method' data/dbus/*.xml | awk -F: '{sum+=$2} END {print sum}'` returns ≥ 20 (total methods across all interfaces)
 
-### Sub-Phase 0.9: systemd Unit File Templates ⬜
+### Sub-Phase 0.9: systemd Unit File Templates ✅
 
 - **Goal**: All systemd service and target unit files exist under data/systemd/ with correct dependency ordering.
 - **Tasks**:
@@ -164,14 +164,14 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Create `data/systemd/zenos-headless.target` — AllowIsolate=yes, Conflicts=zenos-compositor.service
   - Create `data/systemd/zenos-session@.service` — template unit for per-user session, After=systemd-logind.service
 - **Quality Gate**:
-  - [ ] All 8 unit files exist under `data/systemd/`
-  - [ ] Each `.service` file contains `[Unit]` and `[Service]` sections; non-template services also contain `[Install]` sections
-  - [ ] `zenos-headless.target` contains `[Unit]` and `[Install]` sections with `AllowIsolate=yes`
-  - [ ] `grep -l 'After=' data/systemd/*.service | wc -l` returns ≥ 5 (dependency ordering present)
-  - [ ] `grep -l 'BusName=org.zenos' data/systemd/*.service | wc -l` returns ≥ 4 (D-Bus activation configured)
-  - [ ] No unit file references a non-existent target or service name
+  - [x] All 8 unit files exist under `data/systemd/`
+  - [x] Each `.service` file contains `[Unit]` and `[Service]` sections; non-template services also contain `[Install]` sections
+  - [x] `zenos-headless.target` contains `[Unit]` and `[Install]` sections with `AllowIsolate=yes`
+  - [x] `grep -l 'After=' data/systemd/*.service | wc -l` returns ≥ 5 (dependency ordering present)
+  - [x] `grep -l 'BusName=org.zenos' data/systemd/*.service | wc -l` returns ≥ 4 (D-Bus activation configured)
+  - [x] No unit file references a non-existent target or service name
 
-### Sub-Phase 0.10: Security and System Configuration Templates ⬜
+### Sub-Phase 0.10: Security and System Configuration Templates ✅
 
 - **Goal**: AppArmor profiles, nftables firewall rules, polkit rules, and zram configuration templates exist under data/.
 - **Tasks**:
@@ -186,13 +186,13 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Create `data/zram/zenos-zram.conf` — algorithm=lz4, size=50% of RAM, streams=auto
   - Create `data/ostree/` directory for OSTree remote and update configuration (populated in Sub-Phase 4.5)
 - **Quality Gate**:
-  - [ ] All 6 AppArmor profile files exist under `data/apparmor/`
-  - [ ] Each AppArmor profile contains a `profile` block with at least one file rule and one capability rule
-  - [ ] `data/nftables/zenos-firewall.nft` exists and contains `table inet filter` with `chain input` and `chain output`
-  - [ ] `data/polkit/50-zenos.rules` exists and contains at least 3 `polkit.addRule` calls
-  - [ ] `data/zram/zenos-zram.conf` exists and contains `ALGORITHM=lz4` and `SIZE=50`
+  - [x] All 6 AppArmor profile files exist under `data/apparmor/`
+  - [x] Each AppArmor profile contains a `profile` block with at least one file rule and one capability rule
+  - [x] `data/nftables/zenos-firewall.nft` exists and contains `table inet filter` with `chain input` and `chain output`
+  - [x] `data/polkit/50-zenos.rules` exists and contains at least 3 `polkit.addRule` calls
+  - [x] `data/zram/zenos-zram.conf` exists and contains `ALGORITHM=lz4` and `SIZE=50`
 
-### Sub-Phase 0.11: Branding and Icon Theme Scaffolding ⬜
+### Sub-Phase 0.11: Branding and Icon Theme Scaffolding ✅
 
 - **Goal**: Icon theme directory structure follows the freedesktop icon theme spec with placeholder assets.
 - **Tasks**:
@@ -201,11 +201,11 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Create category directories under each size: apps, actions, status, devices, places
   - Add placeholder SVG for Zen OS logo at `data/branding/icons/hicolor/scalable/apps/zenos.svg`
 - **Quality Gate**:
-  - [ ] `data/branding/icons/index.theme` exists and contains `[Icon Theme]` section with `Name=Zen OS`
-  - [ ] `find data/branding/icons/hicolor -type d | wc -l` returns ≥ 40 (8 sizes × 5 categories)
-  - [ ] `data/branding/icons/hicolor/scalable/apps/zenos.svg` exists and is valid SVG (contains `<svg` tag)
+  - [x] `data/branding/icons/index.theme` exists and contains `[Icon Theme]` section with `Name=Zen OS`
+  - [x] `find data/branding/icons/hicolor -type d | wc -l` returns ≥ 40 (8 sizes × 5 categories)
+  - [x] `data/branding/icons/hicolor/scalable/apps/zenos.svg` exists and is valid SVG (contains `<svg` tag)
 
-### Sub-Phase 0.12: Zen Browser Configuration Templates ⬜
+### Sub-Phase 0.12: Zen Browser Configuration Templates ✅
 
 - **Goal**: Browser privacy-hardening config files exist under data/browser/ ready for injection at boot time.
 - **Tasks**:
@@ -213,24 +213,24 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Create `data/browser/user.js` — preference overrides: disable `toolkit.telemetry.*`, `datareporting.*`, `browser.newtabpage.activity-stream.feeds.*`, `network.prefetch-next`, `browser.safebrowsing.*` (Google endpoint)
   - Create `data/browser/userChrome.css` — minimal Zen OS visual identity placeholder (custom tab bar color matching system theme)
 - **Quality Gate**:
-  - [ ] All 3 files exist under `data/browser/`
-  - [ ] `python3 -m json.tool data/browser/policies.json` exits 0 (valid JSON)
-  - [ ] `grep -c 'DisableTelemetry' data/browser/policies.json` returns ≥ 1
-  - [ ] `grep -c 'toolkit.telemetry' data/browser/user.js` returns ≥ 1
-  - [ ] `data/browser/userChrome.css` contains at least one CSS rule
+  - [x] All 3 files exist under `data/browser/`
+  - [x] `python3 -m json.tool data/browser/policies.json` exits 0 (valid JSON)
+  - [x] `grep -c 'DisableTelemetry' data/browser/policies.json` returns ≥ 1
+  - [x] `grep -c 'toolkit.telemetry' data/browser/user.js` returns ≥ 1
+  - [x] `data/browser/userChrome.css` contains at least one CSS rule
 
-### Sub-Phase 0.13: Documentation Completion ⬜
+### Sub-Phase 0.13: Documentation Completion ✅
 
 - **Goal**: docs/CONTRIBUTING.md and docs/architecture/ ADR index exist with complete content.
 - **Tasks**:
   - Write `docs/CONTRIBUTING.md` — contribution guidelines: branch naming (`feature/`, `fix/`, `docs/`), commit message format (imperative, English, ≤ 72 char subject), PR process, code style (C17, K&R braces, 4-space indent, 100-col limit, snake_case), testing requirements (all tests pass, ASan clean)
   - Create `docs/architecture/README.md` — ADR index explaining the Architecture Decision Record format, listing planned ADRs (ADR-001: In-process shell, ADR-002: Cairo+Pango over GTK, ADR-003: OSTree layering over direct APT, ADR-004: SceneFX over raw wlroots scene)
 - **Quality Gate**:
-  - [ ] `docs/CONTRIBUTING.md` exists and contains sections for branch naming, commit format, code style, and testing
-  - [ ] `docs/architecture/README.md` exists and lists at least 4 planned ADRs
-  - [ ] All documentation files are written in English
+  - [x] `docs/CONTRIBUTING.md` exists and contains sections for branch naming, commit format, code style, and testing
+  - [x] `docs/architecture/README.md` exists and lists at least 4 planned ADRs
+  - [x] All documentation files are written in English
 
-### Sub-Phase 0.14: CI Pipeline ⬜
+### Sub-Phase 0.14: CI Pipeline ✅
 
 - **Goal**: GitHub Actions CI workflow builds, lints, and tests the project on every push and PR.
 - **Tasks**:
@@ -241,12 +241,12 @@ Zen OS follows a milestone-based versioning scheme during development:
     - Cache meson builddir and subprojects for faster CI
   - Create `.clang-format` at repo root with project style settings (BasedOnStyle: LLVM, IndentWidth: 4, BreakBeforeBraces: Linux, ColumnLimit: 100)
 - **Quality Gate**:
-  - [ ] `.github/workflows/ci.yml` exists and contains `on: [push, pull_request]` trigger
-  - [ ] CI workflow defines at least 3 jobs: lint, build, test
-  - [ ] CI build job uses matrix strategy with at least gcc and clang
-  - [ ] `.clang-format` exists and contains `IndentWidth: 4` and `ColumnLimit: 100`
+  - [x] `.github/workflows/ci.yml` exists and contains `on: [push, pull_request]` trigger
+  - [x] CI workflow defines at least 3 jobs: lint, build, test
+  - [x] CI build job uses matrix strategy with at least gcc and clang
+  - [x] `.clang-format` exists and contains `IndentWidth: 4` and `ColumnLimit: 100`
 
-### Sub-Phase 0.15: Scaffolding Verification Checkpoint ⬜
+### Sub-Phase 0.15: Scaffolding Verification Checkpoint ✅
 
 - **Goal**: All Phase 0 artifacts are verified complete, consistent, and the build system compiles everything cleanly.
 - **Tasks**:
@@ -261,16 +261,16 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Update `docs/CHANGELOG.md` with Phase 0 completion entry
   - Commit all changes with message: "phase0: complete planning and project setup scaffolding"
 - **Quality Gate**:
-  - [ ] `meson setup builddir --wipe` exits 0
-  - [ ] `meson compile -C builddir` exits 0 with 0 errors
-  - [ ] `meson test -C builddir` exits 0 with ≥ 1 test passed
-  - [ ] `xmllint --noout data/dbus/*.xml` exits 0
-  - [ ] `find data/systemd -name '*.service' -o -name '*.target' | wc -l` returns ≥ 8
-  - [ ] `find data/apparmor -type f | wc -l` returns ≥ 6
-  - [ ] `find data/branding/icons -type d | wc -l` returns ≥ 40
-  - [ ] `find src -name 'meson.build' | wc -l` returns ≥ 10 (all component build files)
-  - [ ] No unsanctioned top-level directories exist (only src/, data/, tools/, tests/, docs/, subprojects/, .github/)
-  - [ ] All Phase 0 sub-phases marked ✅ in this ROADMAP
+  - [x] `meson setup builddir --wipe` exits 0
+  - [x] `meson compile -C builddir` exits 0 with 0 errors
+  - [x] `meson test -C builddir` exits 0 with ≥ 1 test passed
+  - [x] `xmllint --noout data/dbus/*.xml` exits 0
+  - [x] `find data/systemd -name '*.service' -o -name '*.target' | wc -l` returns ≥ 8
+  - [x] `find data/apparmor -type f | wc -l` returns ≥ 6
+  - [x] `find data/branding/icons -type d | wc -l` returns ≥ 40
+  - [x] `find src -name 'meson.build' | wc -l` returns ≥ 10 (all component build files)
+  - [x] No unsanctioned top-level directories exist (only src/, data/, tools/, tests/, docs/, subprojects/, .github/)
+  - [x] All Phase 0 sub-phases marked ✅ in this ROADMAP
 
 ---
 

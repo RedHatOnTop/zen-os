@@ -43,6 +43,21 @@ Versioning follows the milestone scheme defined in [ROADMAP.md](./ROADMAP.md).
 ### Phase 0: Planning & Project Setup
 
 #### Added
+- **2026-03-09**: Phase 0 complete — all planning and project setup scaffolding verified
+  - Sub-Phase 0.8: D-Bus interface contracts — 5 XML files under `data/dbus/`, all valid XML, 25+ methods defined
+  - Sub-Phase 0.9: systemd unit files — 8 units under `data/systemd/` with correct dependency ordering
+  - Sub-Phase 0.10: Security configs — 6 AppArmor profiles, nftables firewall, polkit rules, zram config
+  - Sub-Phase 0.11: Branding — icon theme with 49 directories, placeholder SVG logo
+  - Sub-Phase 0.12: Browser configs — policies.json, user.js, userChrome.css for privacy hardening
+  - Sub-Phase 0.13: Documentation — CONTRIBUTING.md and architecture ADR index
+  - Sub-Phase 0.14: CI pipeline — GitHub Actions with lint, build (gcc+clang matrix), test jobs
+  - Sub-Phase 0.15: Verification checkpoint — all quality gates passed
+  - `meson setup builddir --wipe` exits 0
+  - `meson compile -C builddir` exits 0 with 0 errors
+  - `meson test -C builddir` exits 0 with 1 test passed (4 sub-tests)
+  - `xmllint --noout data/dbus/*.xml` exits 0
+  - 10 meson.build files in src/, 49 icon directories, 6 AppArmor profiles, 8 systemd units
+
 - **2026-03-05**: Sub-Phase 0.7 complete — test directory scaffolding
   - `tests/unit/meson.build`: CMocka dependency, test-dbus-errors executable
   - `tests/unit/test_dbus_errors.c`: 4 test functions for `zen_error_string()` and `zen_error_dbus_name()`
@@ -86,15 +101,17 @@ Versioning follows the milestone scheme defined in [ROADMAP.md](./ROADMAP.md).
   - Development roadmap created (11 phases, 0–10, each gated by quality gates)
   - Changelog created to track implementation status
 
-#### Pending
-- [ ] Root project files (README, LICENSE, .gitignore, meson.build)
-- [ ] Source directory scaffolding with placeholders
-- [ ] D-Bus interface XML contracts
-- [ ] systemd unit file templates
-- [ ] AppArmor, nftables, polkit, zram config templates
-- [ ] Icon theme scaffolding
-- [ ] CI pipeline (GitHub Actions)
-- [ ] Scaffolding verification checkpoint
+#### Completed
+- [x] Root project files (meson.build, meson_options.txt, AGENTS.md, .gitignore, .clang-format)
+- [x] Source directory scaffolding with placeholders (10 components)
+- [x] D-Bus interface XML contracts (5 interfaces, 25+ methods)
+- [x] systemd unit file templates (8 units)
+- [x] AppArmor, nftables, polkit, zram config templates
+- [x] Icon theme scaffolding (49 directories, placeholder SVG)
+- [x] Browser privacy-hardening configs (policies.json, user.js, userChrome.css)
+- [x] Documentation (CONTRIBUTING.md, architecture ADR index)
+- [x] CI pipeline (GitHub Actions — lint, build, test)
+- [x] Scaffolding verification checkpoint — all quality gates passed
 
 ---
 
@@ -112,7 +129,7 @@ Versioning follows the milestone scheme defined in [ROADMAP.md](./ROADMAP.md).
 
 | Component | Phase | Status |
 |-----------|-------|--------|
-| Project Scaffolding | 0 | 🟡 In Progress |
+| Project Scaffolding | 0 | ✅ Complete |
 | Boot / OSTree | 1 | ⬜ Not Started |
 | Compositor (wlroots) | 1 | 🟡 In Progress (Sub-Phase 1.1 done) |
 | Session Manager | 1 | ⬜ Not Started |

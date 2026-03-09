@@ -34,11 +34,10 @@ Versioning follows the milestone scheme defined in [ROADMAP.md](./ROADMAP.md).
 - [x] LeakSanitizer errors: 0
 
 #### Known Issues
-- SceneFX `fx_get_renderer` assertion fails when `WLR_RENDERER=pixman` is used.
-  Compositor must use `WLR_RENDERER=gles2` with Mesa llvmpipe for headless rendering.
-  The compositor currently restarts via systemd `Restart=on-failure`, and the boot
-  signal is emitted before the crash. This will be resolved in Sub-Phase 1.2 by
-  ensuring GLES2 renderer is used consistently.
+- ~~SceneFX `fx_get_renderer` assertion fails when `WLR_RENDERER=pixman` is used.~~
+  **Resolved**: Defense-in-depth fix applied in `src/compositor/src/main.c` — environment variable
+  enforcement (`WLR_RENDERER=gles2`) plus post-creation `wlr_renderer_is_fx()` runtime check.
+  See `.kiro/specs/scenefx-renderer-fix/` for full bugfix spec.
 
 ### Phase 0: Planning & Project Setup
 

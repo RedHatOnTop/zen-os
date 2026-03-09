@@ -280,6 +280,12 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 **Status**: 🟡 In Progress (Sub-Phase 1.1 complete)
 
+> **Dependency Tiers**: Sub-phases are ordered by dependency. Tier A (core window management) must complete before Tier B (shell rendering) or Tier C (session/auth). Tier D (extended features) is optional within Phase 1 and can be deferred.
+
+> **Prerequisite**: Sub-Phase 1.2 requires `wlr_compositor_create()` and `wlr_subcompositor_create()` to be added to `zen_compositor_create()` in `src/compositor/src/main.c`. Without these, Wayland clients cannot create `wl_surface` objects. This must be done as the first task of Sub-Phase 1.2.
+
+### Tier A — Core Window Management
+
 ### Sub-Phase 1.1: Minimal Compositor — Empty Frame ✅
 
 - **Goal**: wlroots + SceneFX compositor initializes, renders a solid-color frame in headless QEMU, and emits ZEN_BOOT_OK.
@@ -297,8 +303,10 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 ### Sub-Phase 1.2: xdg_shell Window Lifecycle ⬜
 
+- **Depends on**: 1.1
 - **Goal**: xdg_shell surfaces can be mapped, configured, resized, and closed by Wayland clients.
 - **Tasks**:
+  - Add `wlr_compositor_create()` and `wlr_subcompositor_create()` to `zen_compositor_create()` (prerequisite for `wl_surface` creation)
   - Create `src/compositor/src/xdg.c` — implement xdg_toplevel handlers: map, unmap, request_move, request_resize, set_title, set_app_id, request_fullscreen, request_maximize
   - Create `src/compositor/include/zen/xdg.h` — xdg surface state struct and handler declarations
   - Register `wlr_xdg_shell` in compositor create, add xdg surface to scene graph
@@ -313,6 +321,7 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 ### Sub-Phase 1.3: Input Routing ⬜
 
+- **Depends on**: 1.2
 - **Goal**: Keyboard, pointer, and touch input events are routed to the focused Wayland surface.
 - **Tasks**:
   - Create `src/compositor/src/input.c` — implement keyboard, pointer, and touch handlers
@@ -330,6 +339,7 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 ### Sub-Phase 1.4: Crash Isolation ⬜
 
+- **Depends on**: 1.2
 - **Goal**: When a managed Wayland client crashes or disconnects, the compositor cleans up the surface and continues operating without restart.
 - **Tasks**:
   - Implement client destroy handler in xdg.c — remove surface from scene graph, release focus if focused
@@ -342,37 +352,11 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] Focus transfers to the remaining client after the killed client's surface is removed
   - [ ] Repeated client launch/kill cycles (10x) produce 0 ASan errors and 0 LeakSanitizer errors
 
-### Sub-Phase 1.5: Multi-Monitor Support ⬜
+### Tier B — Shell Rendering Foundation
 
-- **Goal**: Compositor supports multiple outputs with independent resolution and scaling per display.
-- **Tasks**:
-  - Implement per-output resolution and scale configuration in output handler
-  - Implement `wlr_output_layout` positioning for multi-monitor arrangements
-  - Implement cursor movement across output boundaries
-  - Test with QEMU multi-head configuration (2 virtual displays)
-- **Quality Gate**:
-  - [ ] QEMU launched with 2 virtual displays, both render the background color
-  - [ ] Each output reports correct resolution in `wlr_log` output
-  - [ ] Cursor moves seamlessly between outputs
-  - [ ] A window can be moved from one output to another
-  - [ ] ASan reports 0 errors
+### Sub-Phase 1.5: Cairo + Pango Shell Rendering Integration ⬜
 
-### Sub-Phase 1.6: XWayland Bridge ⬜
-
-- **Goal**: Legacy X11 applications run inside the compositor via XWayland.
-- **Tasks**:
-  - Initialize `wlr_xwayland` in compositor create
-  - Implement xwayland surface handlers: map, unmap, configure, set_title
-  - Add xwayland surfaces to scene graph alongside xdg surfaces
-  - Implement focus and input routing for xwayland surfaces
-- **Quality Gate**:
-  - [ ] An X11 application (e.g., `xterm` or `xclock`) launches and displays inside the compositor
-  - [ ] X11 window receives keyboard and pointer input
-  - [ ] Closing the X11 application removes the surface cleanly
-  - [ ] ASan reports 0 errors after X11 client lifecycle
-
-### Sub-Phase 1.7: Cairo + Pango Shell Rendering Integration ⬜
-
+- **Depends on**: 1.1
 - **Goal**: Cairo + Pango can render text and shapes into texture buffers that are composited into the SceneFX scene graph.
 - **Tasks**:
   - Create `src/compositor/src/cairo_buffer.c` — utility to create a Cairo surface, render content, and upload as `wlr_scene_buffer` node
@@ -386,8 +370,58 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] ASan reports 0 errors
   - [ ] No new pkg-config dependencies added beyond cairo and pangocairo
 
-### Sub-Phase 1.8: Compositor D-Bus Interface ⬜
+### Sub-Phase 1.6: Desktop Wallpaper Rendering ⬜
 
+- **Depends on**: 1.5 (Cairo rendering infrastructure)
+- **Goal**: Compositor renders a configurable desktop wallpaper behind all windows and shell elements.
+- **Tasks**:
+  - Implement wallpaper loading from `data/branding/wallpaper/` (PNG or JPEG via Cairo image surface)
+  - Add a default wallpaper asset to `data/branding/wallpaper/default.png`
+  - Render wallpaper as the bottom-most `wlr_scene_buffer` node in the scene graph, scaled to output resolution
+  - Implement solid-color fallback if wallpaper file is missing
+  - Persist wallpaper choice to `~/.config/zenos/theme.json`
+- **Quality Gate**:
+  - [ ] Screenshot shows wallpaper image behind all windows (not just a solid color)
+  - [ ] Wallpaper scales correctly to output resolution without distortion
+  - [ ] Missing wallpaper file falls back to solid color without crash
+  - [ ] ASan reports 0 errors
+
+### Sub-Phase 1.7: Global Keybinding System ⬜
+
+- **Depends on**: 1.3 (input routing must exist before intercepting keys)
+- **Goal**: Compositor intercepts configurable global keyboard shortcuts before they reach focused clients.
+- **Tasks**:
+  - Create `src/compositor/src/keybinds.c` — keybinding registry and dispatch
+  - Create `src/compositor/include/zen/keybinds.h` — keybinding API
+  - Implement default bindings: Ctrl+Alt+T (terminal), Super (App Launcher toggle), Super+L (screen lock), Alt+Tab (window switch), Super+Q (close window)
+  - Implement keybinding config from `~/.config/zenos/keybinds.json` (override defaults)
+  - Keybindings are consumed by compositor and NOT forwarded to focused client
+- **Quality Gate**:
+  - [ ] Pressing a bound key combination triggers the registered action (verified by log output)
+  - [ ] Bound keys are NOT received by the focused Wayland client
+  - [ ] Custom keybinding from `keybinds.json` overrides the default
+  - [ ] ASan reports 0 errors
+
+### Sub-Phase 1.8: wlr-layer-shell Protocol ⬜
+
+- **Depends on**: 1.2 (scene graph surface management)
+- **Goal**: Compositor supports the wlr-layer-shell protocol for overlay surfaces (screen lock, external panels, screenshot tools).
+- **Tasks**:
+  - Register `wlr_layer_shell_v1` in compositor create
+  - Implement layer surface handlers: map, unmap, configure (anchor, margin, exclusive zone)
+  - Support all 4 layers: background, bottom, top, overlay
+  - Implement exclusive zone: layer surfaces can reserve screen edges (e.g., for external bars)
+- **Quality Gate**:
+  - [ ] A layer-shell client (e.g., `wlr-randr` or a test client) creates a surface on the overlay layer
+  - [ ] Layer surface with exclusive zone reserves screen space (windows do not overlap it)
+  - [ ] Layer surfaces on the overlay layer render above all xdg_toplevel windows
+  - [ ] ASan reports 0 errors
+
+### Tier C — Session and Authentication
+
+### Sub-Phase 1.9: Compositor D-Bus Interface ⬜
+
+- **Depends on**: 1.1
 - **Goal**: Compositor exposes org.zenos.Compositor D-Bus interface for external control (app launch, shelf config, dark mode, notifications).
 - **Tasks**:
   - Create `src/compositor/src/dbus.c` — implement sd-bus interface registration and method handlers
@@ -401,8 +435,9 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] D-Bus interface name matches `data/dbus/org.zenos.Compositor.xml` exactly
   - [ ] ASan reports 0 errors after D-Bus method calls
 
-### Sub-Phase 1.9: Session Manager ⬜
+### Sub-Phase 1.10: Session Manager ⬜
 
+- **Depends on**: 1.9 (D-Bus interface for compositor control)
 - **Goal**: PAM authentication and systemd-logind session management allow a user to log in and start a Wayland session.
 - **Tasks**:
   - Create `src/session/src/session.c` — implement PAM authentication flow, logind session creation via sd-bus, compositor launch
@@ -417,79 +452,9 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] Logout terminates all user processes and releases the session
   - [ ] ASan reports 0 errors
 
-### Sub-Phase 1.10: OSTree Boot Health Check ⬜
+### Sub-Phase 1.11: Screen Lock ⬜
 
-- **Goal**: On boot, the system verifies the current OSTree deployment is healthy and automatically rolls back to the previous deployment on failure.
-- **Tasks**:
-  - Create `src/daemons/boot-check/` or implement as a shell script at `/usr/libexec/zenos-boot-check`
-  - Implement deployment health check: verify critical binaries exist, verify systemd services started, verify compositor process is running
-  - Implement automatic rollback via `ostree admin undeploy` + reboot if health check fails
-  - Integrate with `data/systemd/zenos-boot-check.service` (oneshot, early boot)
-- **Quality Gate**:
-  - [ ] Health check script/binary exits 0 on a healthy deployment
-  - [ ] Health check exits non-zero when a critical binary is missing (simulated by renaming)
-  - [ ] On health check failure, the system rolls back to the previous OSTree deployment
-  - [ ] Boot counter mechanism prevents infinite rollback loops (max 3 attempts)
-
-### Sub-Phase 1.11: Memory Budget Validation ⬜
-
-- **Goal**: Compositor core idle RSS ≤ 30 MB, verified on reference hardware.
-- **Tasks**:
-  - Measure compositor RSS after boot using `/proc/<pid>/status` VmRSS field
-  - Profile memory usage with Valgrind massif on headless QEMU
-  - Identify and fix any memory bloat (unnecessary allocations, leaked buffers)
-  - Document memory baseline in CHANGELOG.md
-- **Quality Gate**:
-  - [ ] `grep VmRSS /proc/$(pidof zen-compositor)/status` reports ≤ 30720 kB (30 MB) on QEMU reference hardware
-  - [ ] Valgrind massif peak heap usage ≤ 20 MB
-  - [ ] No memory leaks reported by LeakSanitizer after 60 seconds of idle operation
-
-### Sub-Phase 1.12: Desktop Wallpaper Rendering ⬜
-
-- **Goal**: Compositor renders a configurable desktop wallpaper behind all windows and shell elements.
-- **Tasks**:
-  - Implement wallpaper loading from `data/branding/wallpaper/` (PNG or JPEG via Cairo image surface)
-  - Add a default wallpaper asset to `data/branding/wallpaper/default.png`
-  - Render wallpaper as the bottom-most `wlr_scene_buffer` node in the scene graph, scaled to output resolution
-  - Implement solid-color fallback if wallpaper file is missing
-  - Persist wallpaper choice to `~/.config/zenos/theme.json`
-- **Quality Gate**:
-  - [ ] Screenshot shows wallpaper image behind all windows (not just a solid color)
-  - [ ] Wallpaper scales correctly to output resolution without distortion
-  - [ ] Missing wallpaper file falls back to solid color without crash
-  - [ ] ASan reports 0 errors
-
-### Sub-Phase 1.13: Global Keybinding System ⬜
-
-- **Goal**: Compositor intercepts configurable global keyboard shortcuts before they reach focused clients.
-- **Tasks**:
-  - Create `src/compositor/src/keybinds.c` — keybinding registry and dispatch
-  - Create `src/compositor/include/zen/keybinds.h` — keybinding API
-  - Implement default bindings: Ctrl+Alt+T (terminal), Super (App Launcher toggle), Super+L (screen lock), Alt+Tab (window switch), Super+Q (close window)
-  - Implement keybinding config from `~/.config/zenos/keybinds.json` (override defaults)
-  - Keybindings are consumed by compositor and NOT forwarded to focused client
-- **Quality Gate**:
-  - [ ] Pressing a bound key combination triggers the registered action (verified by log output)
-  - [ ] Bound keys are NOT received by the focused Wayland client
-  - [ ] Custom keybinding from `keybinds.json` overrides the default
-  - [ ] ASan reports 0 errors
-
-### Sub-Phase 1.14: wlr-layer-shell Protocol ⬜
-
-- **Goal**: Compositor supports the wlr-layer-shell protocol for overlay surfaces (screen lock, external panels, screenshot tools).
-- **Tasks**:
-  - Register `wlr_layer_shell_v1` in compositor create
-  - Implement layer surface handlers: map, unmap, configure (anchor, margin, exclusive zone)
-  - Support all 4 layers: background, bottom, top, overlay
-  - Implement exclusive zone: layer surfaces can reserve screen edges (e.g., for external bars)
-- **Quality Gate**:
-  - [ ] A layer-shell client (e.g., `wlr-randr` or a test client) creates a surface on the overlay layer
-  - [ ] Layer surface with exclusive zone reserves screen space (windows do not overlap it)
-  - [ ] Layer surfaces on the overlay layer render above all xdg_toplevel windows
-  - [ ] ASan reports 0 errors
-
-### Sub-Phase 1.15: Screen Lock ⬜
-
+- **Depends on**: 1.8 (layer-shell for overlay surface), 1.10 (session/PAM for re-authentication)
 - **Goal**: A screen lock mechanism blanks the display and requires PAM re-authentication to unlock.
 - **Tasks**:
   - Create `src/compositor/src/lock.c` — implement `ext-session-lock-v1` Wayland protocol
@@ -504,6 +469,46 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] Entering the correct password unlocks the session and restores the desktop
   - [ ] Entering an incorrect password shows an error message and remains locked
   - [ ] ASan reports 0 errors
+
+### Tier D — Extended Features (optional in Phase 1)
+
+### Sub-Phase 1.12: Multi-Monitor Support ⬜
+
+- **Depends on**: 1.2 (xdg_shell window management)
+- **Goal**: Compositor supports multiple outputs with independent resolution and scaling per display.
+- **Tasks**:
+  - Implement per-output resolution and scale configuration in output handler
+  - Implement `wlr_output_layout` positioning for multi-monitor arrangements
+  - Implement cursor movement across output boundaries
+  - Test with QEMU multi-head configuration (2 virtual displays)
+- **Quality Gate**:
+  - [ ] QEMU launched with 2 virtual displays, both render the background color
+  - [ ] Each output reports correct resolution in `wlr_log` output
+  - [ ] Cursor moves seamlessly between outputs
+  - [ ] A window can be moved from one output to another
+  - [ ] ASan reports 0 errors
+
+### Sub-Phase 1.13: XWayland Bridge ⬜
+
+- **Depends on**: 1.2, 1.3 (xdg_shell + input routing)
+- **Goal**: Legacy X11 applications run inside the compositor via XWayland.
+- **Tasks**:
+  - Initialize `wlr_xwayland` in compositor create
+  - Implement xwayland surface handlers: map, unmap, configure, set_title
+  - Add xwayland surfaces to scene graph alongside xdg surfaces
+  - Implement focus and input routing for xwayland surfaces
+- **Quality Gate**:
+  - [ ] An X11 application (e.g., `xterm` or `xclock`) launches and displays inside the compositor
+  - [ ] X11 window receives keyboard and pointer input
+  - [ ] Closing the X11 application removes the surface cleanly
+  - [ ] ASan reports 0 errors after X11 client lifecycle
+
+### Relocated Sub-Phases
+
+> **Note**: The following sub-phases were originally planned for Phase 1 but have been relocated to later phases where their prerequisites are available:
+>
+> - **OSTree Boot Health Check** (formerly 1.10) → Moved to Phase 6 (Sub-Phase 6.5). Requires a real OSTree sysroot created by the installer (Sub-Phase 6.3). The quality gate (`ostree admin undeploy`) is unverifiable without an actual OSTree deployment.
+> - **Memory Budget Validation** (formerly 1.11) → Already covered by Phase 8 Sub-Phase 8.3 (Memory Budget Validation) with identical quality gates. Removed from Phase 1 to eliminate duplication.
 
 ---
 
@@ -728,7 +733,7 @@ Zen OS follows a milestone-based versioning scheme during development:
 - **Quality Gate**:
   - [ ] Terminal emulator launches from App Launcher
   - [ ] Terminal accepts keyboard input and displays shell output
-  - [ ] Ctrl+Alt+T keyboard shortcut opens a new terminal window (requires Sub-Phase 1.13 keybinding system)
+  - [ ] Ctrl+Alt+T keyboard shortcut opens a new terminal window (requires Sub-Phase 1.7 keybinding system)
   - [ ] Terminal appears in Shelf running indicators when active
 
 ### Sub-Phase 3.6: xdg-desktop-portal Integration ⬜
@@ -984,6 +989,23 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] `touch /usr/test` fails with "Read-only file system" error
   - [ ] `lsblk -f` shows LUKS-encrypted partitions
   - [ ] Wrong passphrase attempt shows error and re-prompts (does not hang)
+
+### Sub-Phase 6.5: OSTree Boot Health Check ⬜
+
+> **Note**: Relocated from Phase 1 (formerly Sub-Phase 1.10). Requires a real OSTree sysroot from Sub-Phase 6.3 (Installer).
+
+- **Depends on**: 6.3 (Installer creates the OSTree sysroot needed for `ostree admin undeploy`)
+- **Goal**: On boot, the system verifies the current OSTree deployment is healthy and automatically rolls back to the previous deployment on failure.
+- **Tasks**:
+  - Create `src/daemons/boot-check/` or implement as a shell script at `/usr/libexec/zenos-boot-check`
+  - Implement deployment health check: verify critical binaries exist, verify systemd services started, verify compositor process is running
+  - Implement automatic rollback via `ostree admin undeploy` + reboot if health check fails
+  - Integrate with `data/systemd/zenos-boot-check.service` (oneshot, early boot)
+- **Quality Gate**:
+  - [ ] Health check script/binary exits 0 on a healthy deployment
+  - [ ] Health check exits non-zero when a critical binary is missing (simulated by renaming)
+  - [ ] On health check failure, the system rolls back to the previous OSTree deployment
+  - [ ] Boot counter mechanism prevents infinite rollback loops (max 3 attempts)
 
 ---
 

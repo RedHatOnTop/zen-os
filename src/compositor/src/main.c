@@ -26,6 +26,7 @@
 #include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_subcompositor.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_scene.h>
@@ -34,6 +35,8 @@
 #include <render/fx_renderer/fx_renderer.h>
 
 #include "zen/compositor.h"
+#include "zen/input.h"
+#include "zen/xdg.h"
 
 /* Zen OS brand color: deep navy (#1a1a2e) */
 static const float ZEN_CLEAR_COLOR[4] = {
@@ -216,7 +219,18 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
     wlr_renderer_init_wl_display(compositor->renderer,
                                   compositor->wl_display);
 
-    /* 4. Allocator */
+    /* 4. wl_compositor + wl_subcompositor globals (Req 1) */
+    compositor->wlr_comp =
+        wlr_compositor_create(compositor->wl_display, 5,
+                              compositor->renderer);
+    if (!compositor->wlr_comp) {
+        wlr_log(WLR_ERROR, "%s", "Failed to create wlr_compositor");
+        goto cleanup;
+    }
+
+    wlr_subcompositor_create(compositor->wl_display);
+
+    /* 5. Allocator */
     compositor->allocator =
         wlr_allocator_autocreate(compositor->backend,
                                   compositor->renderer);
@@ -225,14 +239,14 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
         goto cleanup;
     }
 
-    /* 5. Scene graph */
+    /* 6. Scene graph */
     compositor->scene = wlr_scene_create();
     if (!compositor->scene) {
         wlr_log(WLR_ERROR, "%s", "Failed to create scene");
         goto cleanup;
     }
 
-    /* 6. Output layout */
+    /* 7. Output layout */
     compositor->output_layout =
         wlr_output_layout_create(compositor->wl_display);
     if (!compositor->output_layout) {
@@ -240,7 +254,7 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
         goto cleanup;
     }
 
-    /* 7. Bind scene to output layout */
+    /* 8. Bind scene to output layout */
     compositor->scene_layout =
         wlr_scene_attach_output_layout(compositor->scene,
                                         compositor->output_layout);
@@ -264,14 +278,26 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
         }
     }
 
-    /* 8. Listen for new outputs */
+    /* 9. Listen for new outputs */
     compositor->new_output.notify = handle_new_output;
     wl_signal_add(&compositor->backend->events.new_output,
                   &compositor->new_output);
 
-    /* 9. Start the backend */
+    /* 10. Start the backend */
     if (!wlr_backend_start(compositor->backend)) {
         wlr_log(WLR_ERROR, "%s", "Failed to start backend");
+        goto cleanup;
+    }
+
+    /* 11. XDG shell (Req 2) */
+    if (zen_xdg_init(compositor) != 0) {
+        wlr_log(WLR_ERROR, "%s", "Failed to initialize XDG shell");
+        goto cleanup;
+    }
+
+    /* 12. Input routing — seat, cursor, xcursor, new_input listener (Req 3) */
+    if (zen_input_init(compositor) != 0) {
+        wlr_log(WLR_ERROR, "%s", "Failed to initialize input module");
         goto cleanup;
     }
 
@@ -305,7 +331,11 @@ void zen_compositor_destroy(struct ZenCompositor *compositor) {
         return;
     }
 
-    /* Destroy in reverse creation order. */
+    /* Destroy modules in reverse initialization order. */
+    zen_input_destroy(compositor);
+    zen_xdg_destroy(compositor);
+
+    /* Destroy core resources in reverse creation order. */
     if (compositor->wl_display) {
         wl_display_destroy_clients(compositor->wl_display);
     }

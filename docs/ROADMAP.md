@@ -282,7 +282,9 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 > **Dependency Tiers**: Sub-phases are ordered by dependency. Tier A (core window management) must complete before Tier B (shell rendering) or Tier C (session/auth). Tier D (extended features) is optional within Phase 1 and can be deferred.
 
-> **Prerequisite**: Sub-Phase 1.2 requires `wlr_compositor_create()` and `wlr_subcompositor_create()` to be added to `zen_compositor_create()` in `src/compositor/src/main.c`. Without these, Wayland clients cannot create `wl_surface` objects. This must be done as the first task of Sub-Phase 1.2.
+> **Prerequisite**: Sub-Phase 1.2 requires `wlr_compositor_create()` to be called in `zen_compositor_create()` in `src/compositor/src/main.c`. Without this, Wayland clients cannot create `wl_surface` objects. Note: wlroots 0.17+ creates `wl_subcompositor` automatically via `wlr_compositor_create()` — no separate `wlr_subcompositor_create()` call is needed.
+
+> **Sub-phase numbering**: The detailed implementation checklist in `.kiro/specs/phase1-foundation/tasks.md` uses finer granularity (sub-phases 1.1–1.16) than this roadmap (1.1–1.13). The roadmap entries are high-level milestones; `tasks.md` is the authoritative implementation checklist per AGENTS.md §4. Approximate mapping: roadmap 1.2 ≈ tasks 1.2+1.3+1.5; roadmap 1.3 ≈ tasks 1.4; roadmap 1.5 ≈ tasks 1.6; roadmap 1.6 ≈ tasks 1.7; roadmap 1.7 ≈ tasks 1.8; roadmap 1.8 ≈ tasks 1.9; roadmap 1.9 ≈ tasks 1.10; roadmap 1.10 ≈ tasks 1.11; roadmap 1.11 ≈ tasks 1.12; roadmap 1.12 ≈ tasks 1.13; roadmap 1.13 ≈ tasks 1.14; tasks 1.15–1.16 are cross-cutting (ASan validation + build finalization, no direct roadmap equivalent).
 
 ### Tier A — Core Window Management
 
@@ -302,11 +304,12 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [x] LeakSanitizer reports 0 errors
 
 ### Sub-Phase 1.2: xdg_shell Window Lifecycle ⬜
+<!-- tasks.md: 1.2 (Surface Protocols) + 1.3 (XDG Shell) + 1.5 (Crash Isolation) -->
 
 - **Depends on**: 1.1
 - **Goal**: xdg_shell surfaces can be mapped, configured, resized, and closed by Wayland clients.
 - **Tasks**:
-  - Add `wlr_compositor_create()` and `wlr_subcompositor_create()` to `zen_compositor_create()` (prerequisite for `wl_surface` creation)
+  - Add `wlr_compositor_create()` to `zen_compositor_create()` (prerequisite for `wl_surface` creation; wlroots 0.17+ creates `wl_subcompositor` automatically — no separate `wlr_subcompositor_create()` call needed)
   - Create `src/compositor/src/xdg.c` — implement xdg_toplevel handlers: map, unmap, request_move, request_resize, set_title, set_app_id, request_fullscreen, request_maximize
   - Create `src/compositor/include/zen/xdg.h` — xdg surface state struct and handler declarations
   - Register `wlr_xdg_shell` in compositor create, add xdg surface to scene graph
@@ -320,6 +323,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] `meson compile -C builddir` exits 0 with 0 errors
 
 ### Sub-Phase 1.3: Input Routing ⬜
+<!-- tasks.md: 1.4 (Input Routing) -->
 
 - **Depends on**: 1.2
 - **Goal**: Keyboard, pointer, and touch input events are routed to the focused Wayland surface.
@@ -338,6 +342,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] ASan reports 0 errors after input interaction sequence
 
 ### Sub-Phase 1.4: Crash Isolation ⬜
+<!-- tasks.md: 1.5 (Crash Isolation) — also cross-referenced in 1.2 above -->
 
 - **Depends on**: 1.2
 - **Goal**: When a managed Wayland client crashes or disconnects, the compositor cleans up the surface and continues operating without restart.
@@ -355,6 +360,7 @@ Zen OS follows a milestone-based versioning scheme during development:
 ### Tier B — Shell Rendering Foundation
 
 ### Sub-Phase 1.5: Cairo + Pango Shell Rendering Integration ⬜
+<!-- tasks.md: 1.6 (Cairo + Pango Rendering Pipeline) -->
 
 - **Depends on**: 1.1
 - **Goal**: Cairo + Pango can render text and shapes into texture buffers that are composited into the SceneFX scene graph.
@@ -371,6 +377,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] No new pkg-config dependencies added beyond cairo and pangocairo
 
 ### Sub-Phase 1.6: Desktop Wallpaper Rendering ⬜
+<!-- tasks.md: 1.7 (Desktop Wallpaper) -->
 
 - **Depends on**: 1.5 (Cairo rendering infrastructure)
 - **Goal**: Compositor renders a configurable desktop wallpaper behind all windows and shell elements.
@@ -387,6 +394,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] ASan reports 0 errors
 
 ### Sub-Phase 1.7: Global Keybinding System ⬜
+<!-- tasks.md: 1.8 (Global Keybinding System) -->
 
 - **Depends on**: 1.3 (input routing must exist before intercepting keys)
 - **Goal**: Compositor intercepts configurable global keyboard shortcuts before they reach focused clients.
@@ -403,6 +411,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] ASan reports 0 errors
 
 ### Sub-Phase 1.8: wlr-layer-shell Protocol ⬜
+<!-- tasks.md: 1.9 (Layer Shell Protocol) -->
 
 - **Depends on**: 1.2 (scene graph surface management)
 - **Goal**: Compositor supports the wlr-layer-shell protocol for overlay surfaces (screen lock, external panels, screenshot tools).
@@ -420,6 +429,7 @@ Zen OS follows a milestone-based versioning scheme during development:
 ### Tier C — Session and Authentication
 
 ### Sub-Phase 1.9: Compositor D-Bus Interface ⬜
+<!-- tasks.md: 1.10 (Compositor D-Bus Interface) -->
 
 - **Depends on**: 1.1
 - **Goal**: Compositor exposes org.zenos.Compositor D-Bus interface for external control (app launch, shelf config, dark mode, notifications).
@@ -436,6 +446,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] ASan reports 0 errors after D-Bus method calls
 
 ### Sub-Phase 1.10: Session Manager ⬜
+<!-- tasks.md: 1.11 (Session Manager Authentication) -->
 
 - **Depends on**: 1.9 (D-Bus interface for compositor control)
 - **Goal**: PAM authentication and systemd-logind session management allow a user to log in and start a Wayland session.
@@ -453,6 +464,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] ASan reports 0 errors
 
 ### Sub-Phase 1.11: Screen Lock ⬜
+<!-- tasks.md: 1.12 (Screen Lock) -->
 
 - **Depends on**: 1.8 (layer-shell for overlay surface), 1.10 (session/PAM for re-authentication)
 - **Goal**: A screen lock mechanism blanks the display and requires PAM re-authentication to unlock.
@@ -473,6 +485,7 @@ Zen OS follows a milestone-based versioning scheme during development:
 ### Tier D — Extended Features (optional in Phase 1)
 
 ### Sub-Phase 1.12: Multi-Monitor Support ⬜
+<!-- tasks.md: 1.13 (Multi-Monitor Support) -->
 
 - **Depends on**: 1.2 (xdg_shell window management)
 - **Goal**: Compositor supports multiple outputs with independent resolution and scaling per display.
@@ -489,6 +502,8 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] ASan reports 0 errors
 
 ### Sub-Phase 1.13: XWayland Bridge ⬜
+<!-- tasks.md: 1.14 (XWayland Bridge) -->
+<!-- Cross-cutting: tasks 1.15 (ASan/LeakSanitizer Validation) + 1.16 (Build System Finalization) have no roadmap equivalent -->
 
 - **Depends on**: 1.2, 1.3 (xdg_shell + input routing)
 - **Goal**: Legacy X11 applications run inside the compositor via XWayland.

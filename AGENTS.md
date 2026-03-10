@@ -34,7 +34,14 @@ cleanup:
 
 ### Extreme Minimalist
 
-You despise unnecessary external libraries and dependencies. You write the lightest, most optimized code possible using only pure C17 standard facilities and the project's sanctioned libraries. The complete list of allowed external dependencies is maintained in `docs/ALLOWED_DEPENDENCIES.md`. If a task can be accomplished with 50 lines of C instead of pulling in a new dependency, you write the 50 lines. Every additional `pkg-config` entry is a liability. Any dependency not listed in `docs/ALLOWED_DEPENDENCIES.md` requires explicit user approval before use.
+You despise unnecessary external libraries and dependencies. You write the lightest, most optimized code possible using only pure C17 standard facilities and the project's sanctioned libraries. The complete list of allowed external dependencies is maintained in `docs/ALLOWED_DEPENDENCIES.md`. If a task can be accomplished with 50 lines of C instead of pulling in a new dependency, you write the 50 lines. Every additional `pkg-config` entry is a liability.
+
+**Dependency Policy (updated):** You MAY add a new dependency that is not yet listed in `docs/ALLOWED_DEPENDENCIES.md`, but you MUST:
+1. State the legitimate technical reason why the task cannot be accomplished with existing dependencies or pure C17.
+2. Add the new entry to the appropriate table in `docs/ALLOWED_DEPENDENCIES.md` in the same commit.
+3. Explicitly inform the user of the addition and the reason in your response.
+
+Permanently banned libraries (GTK, Qt, Skia, GLib standalone, Electron) remain banned regardless of justification.
 
 ### Strict Rule Follower
 
@@ -124,14 +131,43 @@ zen-os/
 - Non-code data goes under `data/`, never mixed with source.
 - Do not create new top-level directories without explicit user approval.
 
-## 7. Testing
+## 7. Build Environment (WSL2)
+
+This project is a Linux C codebase developed on a Windows host. **All compilation and testing must happen inside WSL2 Ubuntu**, not natively on Windows.
+
+### Build Commands
+
+Meson, ninja, and all Linux dependencies (wlroots, wayland, etc.) are only available inside WSL. Use this pattern for all build and test commands:
+
+```powershell
+wsl -d Ubuntu -- bash -c "cd /mnt/c/Users/jin14/Projects/zen-os && meson compile -C builddir"
+```
+
+### Key Facts
+
+- **WSL distro**: Ubuntu (verify with `wsl -l -q`)
+- **Repo mount**: `/mnt/c/Users/jin14/Projects/zen-os` inside WSL
+- **Meson**: `/usr/bin/meson` (WSL), **not** the Windows pip-installed meson
+- **File change detection**: The `/mnt/c` mount has known issues with mtime propagation. If ninja reports "no work to do" after a file change, force a rebuild with `ninja -C builddir -t clean` or `touch` the file from inside WSL.
+- **Never run `meson` or `ninja` from PowerShell directly** — they will fail due to missing Linux headers and libraries.
+
+### Common Commands
+
+| Action | Command (run from PowerShell) |
+|---|---|
+| Compile | `wsl -d Ubuntu -- bash -c "cd /mnt/c/Users/jin14/Projects/zen-os && meson compile -C builddir"` |
+| Reconfigure | `wsl -d Ubuntu -- bash -c "cd /mnt/c/Users/jin14/Projects/zen-os && meson setup --reconfigure builddir"` |
+| Run tests | `wsl -d Ubuntu -- bash -c "cd /mnt/c/Users/jin14/Projects/zen-os && meson test -C builddir"` |
+| Check errors | `wsl -d Ubuntu -- bash -c "cd /mnt/c/Users/jin14/Projects/zen-os && meson compile -C builddir 2>&1 \| grep -E 'error:\|warning:'"` |
+
+## 8. Testing
 
 - Use `tools/zen-test-cli` for all QEMU-based validation.
 - Every command must be non-interactive (no prompts, no interactive shells).
 - Logs go to files, not stdout. Never pollute the agent's terminal output.
 - Check for ASan/UBSan/kernel panic patterns in serial logs after every boot test.
 
-## 8. Session Continuity
+## 9. Session Continuity
 
 When starting a new session or resuming work:
 

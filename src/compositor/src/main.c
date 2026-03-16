@@ -32,7 +32,7 @@
 #include <wlr/types/wlr_scene.h>
 #include <wlr/util/log.h>
 
-#include <render/fx_renderer/fx_renderer.h>
+#include <scenefx/render/fx_renderer/fx_renderer.h>
 
 #include "zen/compositor.h"
 #include "zen/input.h"
@@ -182,37 +182,18 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
         goto cleanup;
     }
 
-    /* 3. Renderer — SceneFX fx_renderer via wlr_renderer_autocreate.
+    /* 3. Renderer — SceneFX fx_renderer via fx_renderer_create().
      *
-     * SceneFX requires a GLES2-backed fx_renderer. Defense-in-depth:
-     *   a) Enforce WLR_RENDERER=gles2 before creation (the systemd unit
-     *      also sets this, but the binary must not rely on it).
-     *   b) After creation, verify the renderer type to avoid the SceneFX
-     *      fx_get_renderer() assertion crash if enforcement somehow fails.
+     * Use SceneFX's own renderer creation function rather than
+     * wlr_renderer_autocreate(). fx_renderer_create() wraps the GLES2
+     * renderer in the fx_renderer type that SceneFX requires internally.
+     * Using wlr_renderer_autocreate() returns a raw wlroots GLES2 renderer
+     * which fails the wlr_renderer_is_fx() check inside SceneFX.
      */
-    const char *renderer_env = getenv("WLR_RENDERER");
-    if (!renderer_env || strcmp(renderer_env, "gles2") != 0) {
-        if (renderer_env) {
-            wlr_log(WLR_ERROR,
-                     "WLR_RENDERER=%s is incompatible with SceneFX, "
-                     "overriding to gles2", renderer_env);
-        } else {
-            wlr_log(WLR_INFO, "%s", "WLR_RENDERER unset, defaulting to "
-                     "gles2 for SceneFX compatibility");
-        }
-        setenv("WLR_RENDERER", "gles2", 1);
-    }
-
-    compositor->renderer = wlr_renderer_autocreate(compositor->backend);
+    compositor->renderer = fx_renderer_create(compositor->backend);
     if (!compositor->renderer) {
-        wlr_log(WLR_ERROR, "%s", "Failed to create renderer");
-        goto cleanup;
-    }
-
-    if (!wlr_renderer_is_fx(compositor->renderer)) {
-        wlr_log(WLR_ERROR, "%s", "Renderer is not an fx_renderer — "
-                 "SceneFX requires GLES2. Ensure WLR_RENDERER=gles2 "
-                 "and Mesa is installed.");
+        wlr_log(WLR_ERROR, "%s", "Failed to create fx_renderer — "
+                 "ensure Mesa (llvmpipe or GPU) is installed");
         goto cleanup;
     }
 

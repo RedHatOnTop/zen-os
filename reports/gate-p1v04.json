@@ -1,0 +1,33 @@
+{
+  "code": 0,
+  "data": {
+    "results": [
+      {
+        "assertions": [
+          {
+            "description": "No ASan errors",
+            "passed": true
+          },
+          {
+            "description": "No segfaults",
+            "passed": true
+          },
+          {
+            "description": "Compositor is running",
+            "passed": true
+          }
+        ],
+        "elapsed_ms": 22549,
+        "failed": 0,
+        "gate": "Sub-Phase 1.4: Input Routing",
+        "passed": 3,
+        "phase": "1",
+        "status": "passed",
+        "sub_phase": "1.4"
+      }
+    ],
+    "summary": "1 gates: 1 passed, 0 failed, 0 timeout, 0 error"
+  },
+  "elapsed_ms": 22560,
+  "status": "ok"
+}

@@ -1,0 +1,45 @@
+{
+  "code": 0,
+  "data": {
+    "results": [
+      {
+        "assertions": [
+          {
+            "description": "Boot signal detected in serial log",
+            "passed": true
+          },
+          {
+            "description": "No AddressSanitizer errors",
+            "passed": true
+          },
+          {
+            "description": "No LeakSanitizer errors",
+            "passed": true
+          },
+          {
+            "description": "No kernel panics",
+            "passed": true
+          },
+          {
+            "description": "No segfaults",
+            "passed": true
+          },
+          {
+            "description": "Screenshot is not blank",
+            "passed": true
+          }
+        ],
+        "elapsed_ms": 16592,
+        "failed": 0,
+        "gate": "Boot Baseline",
+        "passed": 6,
+        "phase": "0",
+        "status": "passed",
+        "sub_phase": "0.1"
+      }
+    ],
+    "summary": "1 gates: 1 passed, 0 failed, 0 timeout, 0 error"
+  },
+  "elapsed_ms": 16595,
+  "status": "ok"
+}

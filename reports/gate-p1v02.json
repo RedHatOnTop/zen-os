@@ -1,0 +1,41 @@
+{
+  "code": 0,
+  "data": {
+    "results": [
+      {
+        "assertions": [
+          {
+            "description": "Boot signal detected",
+            "passed": true
+          },
+          {
+            "description": "No ASan errors",
+            "passed": true
+          },
+          {
+            "description": "wl_compositor global is registered",
+            "passed": true
+          },
+          {
+            "description": "wl_subcompositor global is registered",
+            "passed": true
+          },
+          {
+            "description": "Screenshot is non-blank",
+            "passed": true
+          }
+        ],
+        "elapsed_ms": 16654,
+        "failed": 0,
+        "gate": "Sub-Phase 1.2: Wayland Surface Protocols",
+        "passed": 5,
+        "phase": "1",
+        "status": "passed",
+        "sub_phase": "1.2"
+      }
+    ],
+    "summary": "1 gates: 1 passed, 0 failed, 0 timeout, 0 error"
+  },
+  "elapsed_ms": 16659,
+  "status": "ok"
+}

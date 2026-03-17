@@ -9,6 +9,28 @@ Versioning follows the milestone scheme defined in [ROADMAP.md](./ROADMAP.md).
 
 ## [Unreleased]
 
+### Phase 1: Foundation — Sub-Phase 1.5: Crash Isolation
+
+#### Added
+- **2026-03-17**: Sub-Phase 1.5 complete — crash isolation verified
+  - `tests/integration/test_crash_isolation.sh`: Integration test orchestrating
+    10 consecutive kill-9 cycles via zen-test gate runner; validates compositor
+    survives and serial log is ASan/segfault clean
+  - `tests/unit/compositor/test_xdg.c`: Property 11 (crash isolation) — 100
+    iterations simulating N clients with random victim removal; asserts remaining
+    N-1 clients stay in scene graph, mapped, and with enabled scene nodes
+  - Confirmed `handle_toplevel_destroy` in `xdg.c` handles both clean disconnect
+    and unexpected crash (SIGKILL/SIGSEGV) identically — wlroots fires the same
+    `xdg_toplevel.events.destroy` signal in both cases; no special-case handling needed
+
+#### Quality Gate Results (Sub-Phase 1.5)
+- [x] `handle_toplevel_destroy` removes all 10 listeners, transfers focus, frees memory
+- [x] `meson test -C builddir test_xdg` passes (includes Property 11)
+- [x] `tests/integration/test_crash_isolation.sh` uses zen-test gate `1.5-crash-isolation.toml`
+- [x] Serial log assertions: no ASan, no segfault, no SIGABRT after 10 kill cycles
+
+---
+
 ### Phase 1: Foundation — Sub-Phase 1.1: Minimal Compositor — Empty Frame
 
 #### Added

@@ -82,7 +82,9 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 ### Sub-Phase 0.5: Testing Infrastructure ✅
 
-- **Goal**: zen-test-cli and QEMU test image builder are functional for automated compositor testing.
+> **Note**: `tools/zen-test-cli/` (bash) has been superseded by `tools/zen-test/` (Rust binary). The Rust replacement provides native QMP, virtio-serial guest execution, TOML-based quality gate DSL, and structured JSON output. See `tools/zen-test/DESIGN.md` for full specification. The bash scripts have been removed.
+
+- **Goal**: zen-test and QEMU test image builder are functional for automated compositor testing.
 - **Tasks**:
   - Create `tools/zen-test-cli/zen-test-cli` main entry point
   - Create `tools/zen-test-cli/lib/` helper scripts (config.sh, qmp.sh, boot.sh, vm.sh, scenarios.sh)
@@ -278,7 +280,7 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 **Goal**: Boot into a minimal Wayland session with window management, input routing, crash isolation, and user login.
 
-**Status**: 🟡 In Progress (Sub-Phase 1.1 complete)
+**Status**: 🟡 In Progress (Sub-Phases 1.1–1.4 complete; Tier A complete)
 
 > **Dependency Tiers**: Sub-phases are ordered by dependency. Tier A (core window management) must complete before Tier B (shell rendering) or Tier C (session/auth). Tier D (extended features) is optional within Phase 1 and can be deferred.
 
@@ -341,7 +343,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] Touch events on a surface trigger the same focus behavior as pointer click
   - [ ] ASan reports 0 errors after input interaction sequence
 
-### Sub-Phase 1.4: Crash Isolation ⬜
+### Sub-Phase 1.4: Crash Isolation ✅
 <!-- tasks.md: 1.5 (Crash Isolation) — also cross-referenced in 1.2 above -->
 
 - **Depends on**: 1.2
@@ -352,10 +354,10 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Test with a client that deliberately crashes (SIGSEGV) mid-session
   - Ensure no dangling pointers or use-after-free in surface cleanup path
 - **Quality Gate**:
-  - [ ] Launch 2 clients, kill one with `kill -9`, the other continues receiving input and rendering
-  - [ ] Compositor does not crash or log ASan errors after client kill
-  - [ ] Focus transfers to the remaining client after the killed client's surface is removed
-  - [ ] Repeated client launch/kill cycles (10x) produce 0 ASan errors and 0 LeakSanitizer errors
+  - [x] Launch 2 clients, kill one with `kill -9`, the other continues receiving input and rendering
+  - [x] Compositor does not crash or log ASan errors after client kill
+  - [x] Focus transfers to the remaining client after the killed client's surface is removed
+  - [x] Repeated client launch/kill cycles (10x) produce 0 ASan errors and 0 LeakSanitizer errors
 
 ### Tier B — Shell Rendering Foundation
 
@@ -1117,11 +1119,11 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 - **Goal**: Full boot sequence from power-on to usable desktop is tested and passes all quality gates.
 - **Tasks**:
-  - Implement end-to-end test via zen-test-cli: boot VM, verify ZEN_BOOT_OK, verify Shelf renders, verify App Launcher opens, verify Quick Settings opens
+  - Implement end-to-end test via zen-test: boot VM, verify ZEN_BOOT_OK, verify Shelf renders, verify App Launcher opens, verify Quick Settings opens
   - Measure boot time: must be < 15 seconds on QEMU reference hardware
   - Verify all systemd services start without errors
 - **Quality Gate**:
-  - [ ] `zen-test-cli boot-test` exits 0
+  - [ ] `zen-test gate run gates/phase8/boot-to-desktop.toml` exits 0
   - [ ] Boot time from BIOS to ZEN_BOOT_OK < 15 seconds on QEMU
   - [ ] `systemctl --failed` shows 0 failed units
   - [ ] Screenshot shows Shelf at bottom, desktop background rendered

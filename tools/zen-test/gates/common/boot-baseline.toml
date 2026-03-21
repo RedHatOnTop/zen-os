@@ -1,0 +1,36 @@
+[gate]
+name = "Boot Baseline"
+phase = "0"
+sub_phase = "0.1"
+description = "Basic boot validation: compositor starts, emits boot signal, no sanitizer errors"
+tags = ["boot", "serial", "screenshot", "baseline"]
+timeout_seconds = 180
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+[[assert.serial]]
+pattern = "ZEN_BOOT_OK"
+description = "Boot signal detected in serial log"
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No AddressSanitizer errors"
+
+[[assert.serial_absent]]
+pattern = "ERROR: LeakSanitizer"
+description = "No LeakSanitizer errors"
+
+[[assert.serial_absent]]
+pattern = "Kernel panic"
+description = "No kernel panics"
+
+[[assert.serial_absent]]
+pattern = "segfault"
+description = "No segfaults"
+
+[[assert.screenshot]]
+type = "non_blank"
+min_size_bytes = 1024
+description = "Screenshot is not blank"

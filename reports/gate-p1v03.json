@@ -21,7 +21,7 @@
             "passed": true
           }
         ],
-        "elapsed_ms": 22576,
+        "elapsed_ms": 22053,
         "failed": 0,
         "gate": "Sub-Phase 1.3: XDG Shell Lifecycle",
         "passed": 4,
@@ -32,6 +32,6 @@
     ],
     "summary": "1 gates: 1 passed, 0 failed, 0 timeout, 0 error"
   },
-  "elapsed_ms": 22595,
+  "elapsed_ms": 22071,
   "status": "ok"
 }

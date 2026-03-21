@@ -9,6 +9,14 @@ project('zen-os', 'c',
     ],
 )
 
+# enable_asan: adds explicit -fsanitize=address,leak flags on top of the
+# default b_sanitize=address,undefined.  Use with buildtype=debug.
+if get_option('enable_asan')
+    add_project_arguments('-fsanitize=address,leak', language: 'c')
+    add_project_link_arguments('-fsanitize=address,leak', language: 'c')
+    message('ASan + LeakSanitizer enabled via enable_asan option')
+endif
+
 subdir('src/common')
 subdir('src/shell')
 subdir('src/daemons/resource-manager')

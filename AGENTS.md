@@ -104,7 +104,7 @@ A sub-phase is **NOT complete** until ALL of the following are done, in order:
 
 **`tasks.md` is the single source of truth for sub-phase status.** ROADMAP.md emoji markers (✅, ⬜, 🟡) are updated to match `tasks.md` after each completion, but `tasks.md` takes precedence in case of conflict.
 
-**You CANNOT skip steps.** Do not mark a sub-phase complete if you haven't verified the quality gate yourself. Do not commit without updating documents first.
+**You CANNOT skip steps.** Do not mark a sub-phase complete if you haven't verified the quality gate yourself. Do not commit without updating documents first. You must commit after every subphase completion before starting the next one.
 
 ## 5. Code Standards
 
@@ -122,7 +122,7 @@ A sub-phase is **NOT complete** until ALL of the following are done, in order:
 zen-os/
 ├── src/       # All C source code
 ├── data/      # Non-code assets (D-Bus XML, systemd units, configs, branding)
-├── tools/     # Developer tooling (zen-test-cli, image-builder)
+├── tools/     # Developer tooling (zen-test, image-builder)
 ├── tests/     # Unit and integration tests
 ├── docs/      # Documentation
 ```
@@ -162,10 +162,16 @@ wsl -d Ubuntu -- bash -c "cd /mnt/c/Users/jin14/Projects/zen-os && meson compile
 
 ## 8. Testing
 
-- Use `tools/zen-test-cli` for all QEMU-based validation.
-- Every command must be non-interactive (no prompts, no interactive shells).
-- Logs go to files, not stdout. Never pollute the agent's terminal output.
-- Check for ASan/UBSan/kernel panic patterns in serial logs after every boot test.
+- Use `tools/zen-test` (Rust binary) for all QEMU-based validation. See `tools/zen-test/DESIGN.md` for full specification and `tools/zen-test/USAGE_GUIDE.md` for agent usage patterns.
+- Build the tool: `cd tools/zen-test && cargo build --release` (requires Rust toolchain in WSL).
+- Every command is **non-interactive** — no prompts, no interactive shells, no TUI.
+- All commands emit **JSON on stdout** (final result) and **JSONL on stderr** (real-time log).
+- Every command has a `--timeout` flag — VM hangs never block the agent.
+- Exit codes: `0`=success, `1`=failure, `2`=timeout, `3`=infra error, `4`=bad args.
+- Use `zen-test vm exec` for guest command execution, not SSH or manual serial interaction.
+- Use `zen-test gate run` to validate quality gates — it orchestrates boot→test→assert→cleanup.
+- Check for ASan/UBSan/kernel panic patterns: `zen-test vm serial-scan <vm-name>`.
+- Quality gate definitions are TOML files under `tools/zen-test/gates/`.
 
 ## 9. Session Continuity
 

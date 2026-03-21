@@ -1,0 +1,31 @@
+[gate]
+name = "SceneFX Renderer Fix Verification"
+phase = "1"
+sub_phase = "1.1"
+description = "Compositor boots with default renderer (no WLR_RENDERER override). Verifies SceneFX renderer selection works."
+tags = ["scenefx", "renderer", "boot"]
+timeout_seconds = 180
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+# This gate verifies the default renderer path.
+# Additional per-renderer gates (pixman, vulkan) can be added as needed.
+
+[[assert.serial]]
+pattern = "ZEN_BOOT_OK"
+description = "Boot succeeds with default renderer"
+
+[[assert.serial_absent]]
+pattern = "assertion"
+description = "No renderer assertion failures"
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors"
+
+[[assert.screenshot]]
+type = "non_blank"
+min_size_bytes = 1024
+description = "Frame renders successfully"

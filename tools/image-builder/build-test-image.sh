@@ -82,6 +82,13 @@ mount --bind /dev/pts "$ROOTFS/dev/pts"
 cp /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
 echo "zen-os-test" > "$ROOTFS/etc/hostname"
 echo "/dev/vda1  /  ext4  errors=remount-ro  0  1" > "$ROOTFS/etc/fstab"
+# Ensure virtio-serial module is loaded for guest agent
+echo "virtio_console" > "$ROOTFS/etc/modules-load.d/virtio-serial.conf"
+# udev rule to create /dev/virtio-ports/ symlinks
+mkdir -p "$ROOTFS/etc/udev/rules.d"
+cat > "$ROOTFS/etc/udev/rules.d/60-virtio-serial.rules" <<'UDEVEOF'
+KERNEL=="vport*", ATTRS{name}=="?*", SYMLINK+="virtio-ports/$attr{name}"
+UDEVEOF
 
 chroot "$ROOTFS" /bin/bash <<'CHROOTEOF'
 set -e
@@ -100,7 +107,9 @@ apt-get install -y -qq --no-install-recommends \
     libgudev-1.0-0 libffi8 \
     libxcb1 libxcb-composite0 libxcb-dri3-0 libxcb-present0 \
     libxcb-render0 libxcb-render-util0 libxcb-shm0 \
-    libxcb-xfixes0 libxcb-xinput0 libxcb-ewmh2 libxcb-icccm4 libxcb-res0
+    libxcb-xfixes0 libxcb-xinput0 libxcb-ewmh2 libxcb-icccm4 libxcb-res0 \
+    jq libasan8 libubsan1 \
+    wayland-utils weston wlr-randr
 systemctl enable serial-getty@ttyS0.service
 passwd -d root
 apt-get clean
@@ -152,6 +161,7 @@ Environment=WLR_HEADLESS_OUTPUTS=1
 Environment=XDG_RUNTIME_DIR=/run/user/0
 Environment=WLR_LIBINPUT_NO_DEVICES=1
 Environment=LD_LIBRARY_PATH=/usr/lib/zen
+Environment=ASAN_OPTIONS=detect_odr_violation=0
 ExecStartPre=/bin/mkdir -p /run/user/0
 ExecStartPre=/bin/chmod 0700 /run/user/0
 ExecStart=/usr/bin/zen-compositor
@@ -164,6 +174,17 @@ RestartSec=3
 WantedBy=multi-user.target
 UNITEOF
 chroot "$ROOTFS" systemctl enable zen-compositor.service
+
+echo "[6b/8] Installing zen-test guest agent..."
+AGENT_DIR="$(dirname "$(dirname "$0")")/zen-test/guest-agent"
+if [[ -f "$AGENT_DIR/zen-test-agent" ]]; then
+    install -m 755 "$AGENT_DIR/zen-test-agent" "$ROOTFS/usr/local/bin/zen-test-agent"
+    install -m 644 "$AGENT_DIR/zen-test-agent.service" "$ROOTFS/etc/systemd/system/zen-test-agent.service"
+    chroot "$ROOTFS" systemctl enable zen-test-agent.service
+    echo "  Guest agent installed and enabled"
+else
+    echo "  WARNING: Guest agent not found at $AGENT_DIR (VM exec will not work)"
+fi
 
 echo "[7/8] Installing GRUB..."
 chroot "$ROOTFS" grub-install --target=i386-pc --boot-directory=/boot "$LOOP_DEV"

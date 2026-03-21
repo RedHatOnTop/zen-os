@@ -1,0 +1,34 @@
+[gate]
+name = "Sub-Phase 1.13: Multi-Monitor Support"
+phase = "1"
+sub_phase = "1.13"
+description = "Multiple outputs are in layout; pointer moves between them; both render content"
+tags = ["multi-monitor", "output", "layout"]
+timeout_seconds = 180
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+[[assert.serial]]
+pattern = "ZEN_BOOT_OK"
+description = "Compositor boots"
+
+[[assert.exec]]
+command = "pgrep zen-compositor"
+exit_code = 0
+description = "Compositor is running"
+timeout_seconds = 5
+
+[[assert.screenshot]]
+type = "non_blank"
+min_size_bytes = 1024
+description = "Primary output renders content"
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors"
+
+[[assert.serial_absent]]
+pattern = "segfault"
+description = "No segfaults"

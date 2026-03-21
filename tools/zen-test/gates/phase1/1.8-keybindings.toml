@@ -1,0 +1,29 @@
+[gate]
+name = "Sub-Phase 1.8: Keybindings"
+phase = "1"
+sub_phase = "1.8"
+description = "Global keybindings are consumed and trigger actions"
+tags = ["keybindings", "input"]
+timeout_seconds = 180
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+# Ctrl+Alt+T should launch a terminal.
+# Note: this gate is aspirational — the QMP send-key + verify flow
+# requires the keybinds module to be implemented.
+
+[[assert.serial]]
+pattern = "ZEN_BOOT_OK"
+description = "Compositor boots"
+
+[[assert.exec]]
+command = "pgrep zen-compositor"
+exit_code = 0
+description = "Compositor is running"
+timeout_seconds = 5
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors"

@@ -29,17 +29,20 @@
             "passed": true
           }
         ],
-        "elapsed_ms": 16592,
+        "elapsed_ms": 17457,
         "failed": 0,
         "gate": "Boot Baseline",
         "passed": 6,
         "phase": "0",
+        "screenshots": [
+          "reports/screenshots/0.1-gate-check.ppm.ppm"
+        ],
         "status": "passed",
         "sub_phase": "0.1"
       }
     ],
     "summary": "1 gates: 1 passed, 0 failed, 0 timeout, 0 error"
   },
-  "elapsed_ms": 16595,
+  "elapsed_ms": 17472,
   "status": "ok"
 }

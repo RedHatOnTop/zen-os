@@ -1,0 +1,38 @@
+[gate]
+name = "Sub-Phase 1.15: ASan Lifecycle"
+phase = "1"
+sub_phase = "1.15"
+description = "LeakSanitizer reports 0 leaks on clean compositor shutdown"
+tags = ["asan", "lsan", "lifecycle"]
+timeout_seconds = 240
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+# Setup: launch a client.
+[[setup.exec]]
+command = "weston-terminal &"
+timeout_seconds = 5
+
+[[setup.exec]]
+command = "sleep 3"
+timeout_seconds = 5
+
+# Test: initiate compositor shutdown and wait.
+[[test.exec]]
+command = "kill -TERM $(pgrep zen-compositor) && sleep 5"
+timeout_seconds = 15
+
+# Assertions: check serial log for sanitizer output.
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors on shutdown"
+
+[[assert.serial_absent]]
+pattern = "ERROR: LeakSanitizer"
+description = "No LSan leaks on shutdown"
+
+[[assert.serial_absent]]
+pattern = "SUMMARY: AddressSanitizer"
+description = "No ASan summary (meaning no errors at all)"

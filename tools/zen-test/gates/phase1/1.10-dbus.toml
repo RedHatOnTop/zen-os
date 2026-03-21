@@ -1,0 +1,25 @@
+[gate]
+name = "Sub-Phase 1.10: D-Bus Interface"
+phase = "1"
+sub_phase = "1.10"
+description = "org.zenos.Compositor D-Bus interface is accessible and responds"
+tags = ["dbus", "compositor"]
+timeout_seconds = 180
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+[[assert.serial]]
+pattern = "ZEN_BOOT_OK"
+description = "Compositor boots"
+
+[[assert.exec]]
+command = "busctl --system list 2>/dev/null | grep -q org.zenos || busctl --user list 2>/dev/null | grep -q org.zenos"
+exit_code = 0
+description = "org.zenos.Compositor D-Bus name is registered"
+timeout_seconds = 10
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors"

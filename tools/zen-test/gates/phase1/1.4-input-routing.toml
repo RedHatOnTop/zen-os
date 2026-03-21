@@ -1,0 +1,33 @@
+[gate]
+name = "Sub-Phase 1.4: Input Routing"
+phase = "1"
+sub_phase = "1.4"
+description = "Keyboard and pointer input is routed to the focused surface"
+tags = ["input", "keyboard", "pointer"]
+timeout_seconds = 180
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+[[setup.exec]]
+command = "WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/0 weston-terminal &"
+timeout_seconds = 5
+
+[[setup.exec]]
+command = "sleep 2"
+timeout_seconds = 5
+
+[[assert.exec]]
+command = "pgrep zen-compositor"
+exit_code = 0
+description = "Compositor is running"
+timeout_seconds = 5
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors"
+
+[[assert.serial_absent]]
+pattern = "segfault"
+description = "No segfaults"

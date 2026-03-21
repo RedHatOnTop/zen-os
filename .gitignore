@@ -28,5 +28,27 @@ subprojects/packagecache/
 .DS_Store
 Thumbs.db
 
+# Rust build artifacts
+tools/zen-test/target/
+
+# VM disk images
+*.qcow2
+*.img
+*.iso
+.zen-test-vms/
+
+# Log files
+*.log
+gate_error*.log
+
+# Test/debug artifacts
+baseline.json
+out.json
+parse_jsonl.py
+reports/gate-results.jsonl
+reports/screenshots/*.ppm
+reports/screenshots/*.ppm.ppm
+
 # Misc
 wget-log*
+CUsersjin14Projectszen-os/

@@ -1,0 +1,95 @@
+#!/bin/bash
+# zen-test-agent — Guest-side agent for zen-test.
+#
+# Listens on a virtio-serial port, executes commands from the host,
+# and returns JSON results. Installed in the test VM image.
+#
+# Wire protocol (newline-delimited JSON):
+#   Host → Guest: {"id":1,"cmd":"exec","args":{"command":"...","timeout":10}}
+#   Guest → Host: {"id":1,"status":"ok","exit_code":0,"stdout":"...","stderr":"..."}
+
+set -uo pipefail
+
+# Log to both stderr (journal) and serial console for debugging.
+log() { echo "zen-test-agent: $*" >&2; echo "zen-test-agent: $*" > /dev/ttyS0 2>/dev/null || true; }
+
+VIRTIO_PORT="/dev/virtio-ports/org.zenos.agent"
+
+log "starting (pid $$)"
+
+# Ensure virtio_console module is loaded.
+modprobe virtio_console 2>/dev/null || true
+
+# Wait for the virtio port to appear (max 60s).
+for i in $(seq 1 60); do
+    [ -e "$VIRTIO_PORT" ] && break
+    for raw in /dev/vport*p*; do
+        [ -e "$raw" ] && VIRTIO_PORT="$raw" && break 2
+    done
+    sleep 1
+done
+
+if [ ! -e "$VIRTIO_PORT" ]; then
+    log "FATAL: virtio port not found after 60s"
+    exit 1
+fi
+
+log "found port: $VIRTIO_PORT"
+
+# Open the port read-write on fd 3. This keeps the port open persistently
+# and avoids the EOF-on-no-host-connection issue that causes crash-looping
+# when using shell redirects (< $VIRTIO_PORT).
+exec 3<>"$VIRTIO_PORT"
+
+log "listening on fd 3"
+
+# Read lines from fd 3. When the host is not connected, read returns
+# empty or EOF. We retry with a short sleep to avoid busy-looping.
+while true; do
+    line=""
+    if ! IFS= read -r -t 2 line <&3; then
+        # read timed out or got EOF — host not connected yet, retry
+        continue
+    fi
+
+    # Skip empty lines
+    [ -z "$line" ] && continue
+
+    log "received command"
+
+    # Parse request fields.
+    id=$(echo "$line" | jq -r '.id // 0')
+    cmd_type=$(echo "$line" | jq -r '.cmd // "exec"')
+    command=$(echo "$line" | jq -r '.args.command // ""')
+    tmout=$(echo "$line" | jq -r '.args.timeout // 10')
+
+    if [ -z "$command" ]; then
+        printf '{"id":%d,"status":"error","exit_code":1,"stdout":"","stderr":"","message":"empty command"}\n' \
+            "$id" >&3
+        continue
+    fi
+
+    # Execute with timeout.
+    out_file=$(mktemp /tmp/agent-stdout.XXXXXX)
+    err_file=$(mktemp /tmp/agent-stderr.XXXXXX)
+
+    set +e
+    timeout "$tmout" bash -c "$command" >"$out_file" 2>"$err_file"
+    ec=$?
+    set -e
+
+    # Read output (truncate to 64KB to avoid huge payloads).
+    stdout=$(head -c 65536 "$out_file")
+    stderr=$(head -c 65536 "$err_file")
+    rm -f "$out_file" "$err_file"
+
+    # Escape for JSON using jq.
+    stdout_json=$(printf '%s' "$stdout" | jq -Rs .)
+    stderr_json=$(printf '%s' "$stderr" | jq -Rs .)
+
+    # Send response via fd 3.
+    printf '{"id":%d,"status":"ok","exit_code":%d,"stdout":%s,"stderr":%s}\n' \
+        "$id" "$ec" "$stdout_json" "$stderr_json" >&3
+
+    log "command done (exit=$ec)"
+done

@@ -1,0 +1,17 @@
+# LSAN suppression file for Zen OS tests
+#
+# Suppresses known one-time allocations from third-party libraries that
+# intentionally do not free their global state on process exit.
+# These are not bugs in our code.
+#
+# Format: leak:<symbol_or_library>
+
+# fontconfig global font cache — never freed by design
+leak:libfontconfig
+leak:FcConfigSubstituteWithPat
+leak:FcDefaultSubstitute
+leak:FcValueSave
+
+# Pango font backend initialization (one-time per process)
+leak:libpangoft2
+leak:libpangocairo

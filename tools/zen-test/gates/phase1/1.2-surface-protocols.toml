@@ -1,0 +1,36 @@
+[gate]
+name = "Sub-Phase 1.2: Wayland Surface Protocols"
+phase = "1"
+sub_phase = "1.2"
+description = "wl_compositor and wl_subcompositor globals are registered"
+tags = ["wayland", "surface", "protocols"]
+timeout_seconds = 180
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+[[assert.serial]]
+pattern = "ZEN_BOOT_OK"
+description = "Boot signal detected"
+
+[[assert.exec]]
+command = "WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/0 wayland-info 2>/dev/null | grep -q wl_compositor"
+exit_code = 0
+description = "wl_compositor global is registered"
+timeout_seconds = 10
+
+[[assert.exec]]
+command = "WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/0 wayland-info 2>/dev/null | grep -q wl_subcompositor"
+exit_code = 0
+description = "wl_subcompositor global is registered"
+timeout_seconds = 10
+
+[[assert.screenshot]]
+type = "non_blank"
+min_size_bytes = 1000
+description = "Screenshot is non-blank"
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors"

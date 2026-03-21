@@ -17,7 +17,7 @@
             "passed": true
           }
         ],
-        "elapsed_ms": 22549,
+        "elapsed_ms": 21987,
         "failed": 0,
         "gate": "Sub-Phase 1.4: Input Routing",
         "passed": 3,
@@ -28,6 +28,6 @@
     ],
     "summary": "1 gates: 1 passed, 0 failed, 0 timeout, 0 error"
   },
-  "elapsed_ms": 22560,
+  "elapsed_ms": 22016,
   "status": "ok"
 }

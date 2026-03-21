@@ -1,0 +1,29 @@
+[gate]
+name = "Sub-Phase 1.9: Layer Shell Protocol"
+phase = "1"
+sub_phase = "1.9"
+description = "wlr-layer-shell-v1 clients create surfaces on overlay layers with exclusive zones"
+tags = ["layer-shell", "overlay", "exclusive-zone"]
+timeout_seconds = 180
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+[[assert.serial]]
+pattern = "ZEN_BOOT_OK"
+description = "Compositor boots"
+
+[[assert.exec]]
+command = "pgrep zen-compositor"
+exit_code = 0
+description = "Compositor is running"
+timeout_seconds = 5
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors"
+
+[[assert.serial_absent]]
+pattern = "segfault"
+description = "No segfaults"

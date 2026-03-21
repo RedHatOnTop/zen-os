@@ -1,30 +1,29 @@
-name: QEMU Boot Test
+name: QEMU Integration Tests
 
 on:
   push:
     paths:
-      - 'compositor/**'
-      - 'shell/**'
-      - 'daemons/**'
-      - 'common/**'
-      - 'tools/zen-test-cli/**'
+      - 'src/**'
+      - 'tools/zen-test/**'
+      - 'tools/image-builder/**'
+      - 'tests/**'
   pull_request:
     paths:
-      - 'compositor/**'
-      - 'shell/**'
-      - 'daemons/**'
-      - 'common/**'
+      - 'src/**'
+      - 'tools/zen-test/**'
+      - 'tools/image-builder/**'
 
 jobs:
-  build-and-boot-test:
-    name: Build + QEMU Boot Validation
+  qemu-test:
+    name: Build + QEMU Quality Gate Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -33,53 +32,57 @@ jobs:
             libcairo2-dev libpango1.0-dev \
             wayland-protocols libxkbcommon-dev \
             qemu-system-x86 qemu-utils \
-            socat jq \
-            debootstrap
+            debootstrap jq
 
-      # TODO: Uncomment when compositor source exists
-      # - name: Build compositor (ASan + UBSan)
-      #   run: |
-      #     meson setup builddir -Db_sanitize=address,undefined
-      #     meson compile -C builddir
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
 
-      # TODO: Uncomment when test image builder exists
-      # - name: Create minimal test image
-      #   run: |
-      #     ./tools/create-test-image.sh /tmp/zen-test.qcow2
+      - name: Cache zen-test binary
+        uses: actions/cache@v4
+        with:
+          path: tools/zen-test/target/release/zen-test
+          key: zen-test-${{ hashFiles('tools/zen-test/**/*.rs', 'tools/zen-test/Cargo.*') }}
 
-      - name: Verify zen-test-cli dependencies
+      - name: Build zen-test
+        run: cargo build --release --manifest-path tools/zen-test/Cargo.toml
+
+      - name: Build compositor (ASan + UBSan)
         run: |
-          chmod +x tools/zen-test-cli/zen-test-cli
-          ./tools/zen-test-cli/zen-test-cli check-deps || true
+          meson setup builddir -Db_sanitize=address,undefined
+          meson compile -C builddir
 
-      # TODO: Uncomment when OS image is available
-      # - name: Boot test
-      #   run: |
-      #     export ZEN_BOOT_TIMEOUT=90
-      #     ./tools/zen-test-cli/zen-test-cli create ci-test \
-      #       --ram 2048 --cpus 2 --image /tmp/zen-test.qcow2
-      #     ./tools/zen-test-cli/zen-test-cli start ci-test \
-      #       --headless --wait-boot
-      #     ./tools/zen-test-cli/zen-test-cli screenshot ci-test \
-      #       --output /tmp/zen-os-logs/ci-boot.ppm
-      #
-      # - name: Check for sanitizer errors
-      #   run: |
-      #     ERRORS=$(grep -c "ERROR: AddressSanitizer\|ERROR: LeakSanitizer" \
-      #       /tmp/zen-test-vms/ci-test/serial.log 2>/dev/null || echo 0)
-      #     echo "Sanitizer errors: $ERRORS"
-      #     [ "$ERRORS" -eq 0 ] || exit 1
-      #
-      # - name: Upload artifacts
-      #   if: always()
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: boot-test-results
-      #     path: |
-      #       /tmp/zen-os-logs/
-      #       /tmp/zen-test-vms/ci-test/serial.log
-      #
-      # - name: Cleanup
-      #   if: always()
-      #   run: |
-      #     ./tools/zen-test-cli/zen-test-cli destroy ci-test 2>/dev/null || true
+      - name: Build test image
+        run: |
+          sudo bash tools/image-builder/build-test-image.sh \
+            --compositor builddir/src/compositor/zen-compositor \
+            --builddir builddir \
+            --output /tmp/zen-os-test.qcow2
+
+      - name: Run quality gates (Phase 1)
+        run: |
+          tools/zen-test/target/release/zen-test gate run \
+            --phase 1 \
+            --image /tmp/zen-os-test.qcow2 \
+            --gate-dir tools/zen-test/gates \
+            --tap /tmp/zen-test-results.tap \
+            --timeout 600 \
+            2>/tmp/zen-test-stderr.log
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-test-results
+          path: |
+            /tmp/zen-test-results.tap
+            /tmp/zen-test-stderr.log
+            /tmp/zen-test-vms/*/serial.log
+            /tmp/zen-test-vms/*/screenshots/
+
+      - name: Cleanup VMs
+        if: always()
+        run: |
+          for vm in /tmp/zen-test-vms/*/; do
+            name=$(basename "$vm")
+            tools/zen-test/target/release/zen-test vm destroy "$name" --timeout 10 2>/dev/null || true
+          done

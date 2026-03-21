@@ -280,7 +280,7 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 **Goal**: Boot into a minimal Wayland session with window management, input routing, crash isolation, and user login.
 
-**Status**: 🟡 In Progress (Sub-Phases 1.1–1.4 complete; Tier A complete)
+**Status**: ✅ Complete (Sub-Phases 1.1–1.12, 1.15, 1.16 verified; Tier D deferred as optional)
 
 > **Dependency Tiers**: Sub-phases are ordered by dependency. Tier A (core window management) must complete before Tier B (shell rendering) or Tier C (session/auth). Tier D (extended features) is optional within Phase 1 and can be deferred.
 
@@ -361,7 +361,7 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 ### Tier B — Shell Rendering Foundation
 
-### Sub-Phase 1.5: Cairo + Pango Shell Rendering Integration ⬜
+### Sub-Phase 1.5: Cairo + Pango Shell Rendering Integration ✅
 <!-- tasks.md: 1.6 (Cairo + Pango Rendering Pipeline) -->
 
 - **Depends on**: 1.1
@@ -378,7 +378,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] ASan reports 0 errors
   - [ ] No new pkg-config dependencies added beyond cairo and pangocairo
 
-### Sub-Phase 1.6: Desktop Wallpaper Rendering ⬜
+### Sub-Phase 1.6: Desktop Wallpaper Rendering ✅
 <!-- tasks.md: 1.7 (Desktop Wallpaper) -->
 
 - **Depends on**: 1.5 (Cairo rendering infrastructure)
@@ -395,7 +395,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] Missing wallpaper file falls back to solid color without crash
   - [ ] ASan reports 0 errors
 
-### Sub-Phase 1.7: Global Keybinding System ⬜
+### Sub-Phase 1.7: Global Keybinding System ✅
 <!-- tasks.md: 1.8 (Global Keybinding System) -->
 
 - **Depends on**: 1.3 (input routing must exist before intercepting keys)

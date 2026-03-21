@@ -1,0 +1,44 @@
+[gate]
+name = "Sub-Phase 1.1: Boot Signal"
+phase = "1"
+sub_phase = "1.1"
+description = "Compositor boots, emits ZEN_BOOT_OK, screenshot is non-blank, ASan/LSan clean"
+tags = ["boot", "serial", "screenshot", "asan"]
+timeout_seconds = 180
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+[[assert.serial]]
+pattern = "ZEN_BOOT_OK"
+description = "Boot signal detected in serial log"
+
+[[assert.serial]]
+pattern = "Zen OS Compositor initialized successfully"
+description = "Compositor init message present"
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors"
+
+[[assert.serial_absent]]
+pattern = "ERROR: LeakSanitizer"
+description = "No LSan errors"
+
+[[assert.serial_absent]]
+pattern = "ERROR: UndefinedBehaviorSanitizer"
+description = "No UBSan errors"
+
+[[assert.serial_absent]]
+pattern = "Kernel panic"
+description = "No kernel panic"
+
+[[assert.serial_absent]]
+pattern = "segfault"
+description = "No segfaults"
+
+[[assert.screenshot]]
+type = "non_blank"
+min_size_bytes = 1024
+description = "Screenshot contains visual content"

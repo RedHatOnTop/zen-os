@@ -1,0 +1,16 @@
+[Unit]
+Description=Zen OS Test Agent (virtio-serial)
+Documentation=https://github.com/user/zen-os/tree/main/tools/zen-test
+After=multi-user.target
+
+[Service]
+Type=simple
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/usr/local/bin/zen-test-agent
+Restart=always
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

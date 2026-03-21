@@ -1,0 +1,44 @@
+[gate]
+name = "Sub-Phase 1.5: Crash Isolation"
+phase = "1"
+sub_phase = "1.5"
+description = "Client crash (kill -9) does not crash compositor; 10x kill cycle stays clean"
+tags = ["crash", "isolation", "asan", "lifecycle"]
+timeout_seconds = 300
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+# Setup: launch test clients.
+[[setup.exec]]
+command = "WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/0 weston-terminal &"
+timeout_seconds = 5
+
+[[setup.exec]]
+command = "sleep 2"
+timeout_seconds = 5
+
+# Test: kill and re-launch 10 times.
+[[test.exec_loop]]
+count = 10
+command = "kill -9 $(pgrep -n weston-terminal) 2>/dev/null; sleep 1; WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/0 weston-terminal &; sleep 1"
+timeout_seconds = 15
+
+# Assertions.
+[[assert.exec]]
+command = "pgrep zen-compositor"
+exit_code = 0
+description = "Compositor still running after 10 kill cycles"
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors after crash cycles"
+
+[[assert.serial_absent]]
+pattern = "segfault"
+description = "No segfaults after crash cycles"
+
+[[assert.serial_absent]]
+pattern = "SIGABRT"
+description = "No SIGABRT in compositor"

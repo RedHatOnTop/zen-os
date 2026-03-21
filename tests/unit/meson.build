@@ -17,3 +17,6 @@ test('dbus-errors', test_dbus_errors,
 
 # Compositor unit tests
 subdir('compositor')
+
+# Session unit tests
+subdir('session')

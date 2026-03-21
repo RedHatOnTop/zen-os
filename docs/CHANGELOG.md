@@ -9,6 +9,27 @@ Versioning follows the milestone scheme defined in [ROADMAP.md](./ROADMAP.md).
 
 ## [Unreleased]
 
+### Phase 1: Foundation — Complete (Sub-Phases 1.1–1.12, 1.15, 1.16)
+
+#### Added
+- **2026-03-21**: Phase 1 Foundation complete — all required sub-phases verified
+  - Sub-Phase 1.8: Global Keybinding System — `keybinds.h`, `keybinds.c`, default bindings (Ctrl+Alt+T, Super, Super+L, Alt+Tab, Super+Q), JSON config override, wired into input handler. `test_keybinds.c` Properties 15–16 pass.
+  - Sub-Phase 1.9: Layer Shell Protocol — `layer.h`, `layer.c`, `wlr_layer_shell_v1` with exclusive zone tracking across all 4 layers. `test_layer.c` Properties 17–18 pass.
+  - Sub-Phase 1.10: Compositor D-Bus Interface — `dbus.h`, `dbus.c`, `org.zenos.Compositor` on session bus, all 7 methods, sd-bus integrated into Wayland event loop. `test_dbus.c` Properties 19–20 pass.
+  - Sub-Phase 1.11: Session Manager Authentication — `session.c` rewritten with PAM auth loop, logind `CreateSession`, compositor fork/exec, `zen_session_oobe_complete()`. `test_session.c` Property 21 passes.
+  - Sub-Phase 1.12: Screen Lock — `lock.h`, `lock.c` with PAM re-auth, Cairo lock UI (clock/avatar/password field), idle timer (300s), logind Lock signal, keyboard routing while locked. `test_lock.c` Properties 22–23 (15/15 tests) pass.
+  - Sub-Phase 1.15: ASan/LeakSanitizer Validation — `enable_asan` option wired in `meson.build`; all modules audited for `goto cleanup` pattern; destruction order verified; `test_asan_lifecycle.sh` created. All 10 unit tests pass with `ASAN_OPTIONS=detect_leaks=1`.
+  - Sub-Phase 1.16: Build System Finalization — all source files and deps verified in meson.build files; `meson compile` exits 0 with zero errors and zero warnings.
+
+#### Quality Gate Results (Phase 1 Final)
+- [x] `meson test -C builddir --suite unit` — 10/10 tests pass (0 failures, 0 timeouts)
+- [x] `meson compile -C builddir 2>&1 | grep -E 'error:|warning:'` — empty output
+- [x] All modules use `goto cleanup` single-exit pattern
+- [x] Destruction order in `zen_compositor_destroy()` is reverse of initialization
+- [x] Tier D tasks (1.13 XWayland, 1.14 Multi-Monitor) deferred as optional
+
+---
+
 ### Phase 1: Foundation — Sub-Phase 1.5: Crash Isolation
 
 #### Added
@@ -152,8 +173,8 @@ Versioning follows the milestone scheme defined in [ROADMAP.md](./ROADMAP.md).
 |-----------|-------|--------|
 | Project Scaffolding | 0 | ✅ Complete |
 | Boot / OSTree | 1 | ⬜ Not Started |
-| Compositor (wlroots) | 1 | 🟡 In Progress (Sub-Phase 1.1 done) |
-| Session Manager | 1 | ⬜ Not Started |
+| Compositor (wlroots) | 1 | ✅ Complete (Sub-Phases 1.1–1.12, 1.15, 1.16) |
+| Session Manager | 1 | ✅ Complete (Sub-Phase 1.11) |
 | Shelf | 2 | ⬜ Not Started |
 | App Launcher | 2 | ⬜ Not Started |
 | Quick Settings | 2 | ⬜ Not Started |

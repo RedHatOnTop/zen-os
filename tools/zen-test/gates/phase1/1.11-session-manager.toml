@@ -1,0 +1,35 @@
+[gate]
+name = "Sub-Phase 1.11: Session Manager Authentication"
+phase = "1"
+sub_phase = "1.11"
+description = "Session manager authenticates via PAM and launches compositor"
+tags = ["session", "pam", "logind"]
+timeout_seconds = 240
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+[[assert.serial]]
+pattern = "ZEN_BOOT_OK"
+description = "Compositor boots under session manager"
+
+[[assert.exec]]
+command = "pgrep zen-compositor"
+exit_code = 0
+description = "Compositor process is running"
+timeout_seconds = 5
+
+[[assert.exec]]
+command = "loginctl list-sessions --no-legend | grep -q ."
+exit_code = 0
+description = "A logind session exists"
+timeout_seconds = 10
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors"
+
+[[assert.serial_absent]]
+pattern = "segfault"
+description = "No segfaults"

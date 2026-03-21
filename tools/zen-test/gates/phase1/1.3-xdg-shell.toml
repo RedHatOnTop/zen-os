@@ -1,0 +1,39 @@
+[gate]
+name = "Sub-Phase 1.3: XDG Shell Lifecycle"
+phase = "1"
+sub_phase = "1.3"
+description = "XDG shell toplevel can be created, mapped, and destroyed cleanly"
+tags = ["xdg", "shell", "toplevel", "lifecycle"]
+timeout_seconds = 180
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+[[setup.exec]]
+command = "WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/0 weston-terminal &"
+timeout_seconds = 5
+
+[[setup.exec]]
+command = "sleep 2"
+timeout_seconds = 5
+
+[[assert.exec]]
+command = "pgrep weston-terminal"
+exit_code = 0
+description = "weston-terminal process is running"
+timeout_seconds = 5
+
+[[assert.exec]]
+command = "kill $(pgrep weston-terminal) && sleep 1 && ! pgrep -x weston-terminal"
+exit_code = 0
+description = "weston-terminal exits cleanly on SIGTERM"
+timeout_seconds = 10
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors during lifecycle"
+
+[[assert.serial_absent]]
+pattern = "segfault"
+description = "No segfaults during lifecycle"

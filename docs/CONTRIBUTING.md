@@ -118,7 +118,7 @@ All contributions must satisfy these testing requirements before merge:
 - UndefinedBehaviorSanitizer (UBSan) reports 0 errors in debug builds
 - No memory leaks reported by LeakSanitizer
 
-For QEMU-based integration testing, use `tools/zen-test-cli`. All test commands must be non-interactive.
+For QEMU-based integration testing, use `tools/zen-test` (Rust binary). See `tools/zen-test/DESIGN.md` for full specification and `tools/zen-test/USAGE_GUIDE.md` for agent usage patterns. All test commands must be non-interactive.
 
 ### Writing Tests
 

@@ -1,0 +1,24 @@
+[gate]
+name = "Sub-Phase 1.7: Wallpaper"
+phase = "1"
+sub_phase = "1.7"
+description = "Wallpaper renders or falls back to brand color #1a1a2e"
+tags = ["wallpaper", "screenshot"]
+timeout_seconds = 180
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+[[assert.serial]]
+pattern = "ZEN_BOOT_OK"
+description = "Compositor boots"
+
+[[assert.screenshot]]
+type = "non_blank"
+min_size_bytes = 1024
+description = "Screenshot not blank (wallpaper or fallback color visible)"
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors"

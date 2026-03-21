@@ -25,17 +25,20 @@
             "passed": true
           }
         ],
-        "elapsed_ms": 16654,
+        "elapsed_ms": 18545,
         "failed": 0,
         "gate": "Sub-Phase 1.2: Wayland Surface Protocols",
         "passed": 5,
         "phase": "1",
+        "screenshots": [
+          "/mnt/c/Users/jin14/Projects/zen-os/reports/screenshots/1.2-gate-check.ppm.ppm"
+        ],
         "status": "passed",
         "sub_phase": "1.2"
       }
     ],
     "summary": "1 gates: 1 passed, 0 failed, 0 timeout, 0 error"
   },
-  "elapsed_ms": 16659,
+  "elapsed_ms": 18567,
   "status": "ok"
 }

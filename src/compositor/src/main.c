@@ -35,8 +35,14 @@
 #include <scenefx/render/fx_renderer/fx_renderer.h>
 
 #include "zen/compositor.h"
+#include "zen/dbus.h"
 #include "zen/input.h"
+#include "zen/keybinds.h"
+#include "zen/layer.h"
+#include "zen/lock.h"
 #include "zen/xdg.h"
+#include "zen/cairo_buffer.h"
+#include "zen/wallpaper.h"
 
 /* Zen OS brand color: deep navy (#1a1a2e) */
 static const float ZEN_CLEAR_COLOR[4] = {
@@ -96,6 +102,10 @@ static void handle_new_output(struct wl_listener *listener, void *data) {
         wlr_output_state_set_mode(&state, mode);
     }
 
+    /* Apply default scale (1.0); per-output HiDPI scale can be set here
+     * once a config system is available (Req 12.5). */
+    wlr_output_state_set_scale(&state, 1.0f);
+
     wlr_output_commit_state(wlr_output, &state);
     wlr_output_state_finish(&state);
 
@@ -126,6 +136,79 @@ static void handle_new_output(struct wl_listener *listener, void *data) {
         wlr_scene_output_create(compositor->scene, wlr_output);
     wlr_scene_output_layout_add_output(compositor->scene_layout,
                                         l_output, output->scene_output);
+
+    /* Render wallpaper for this output (Req 6.1, task 1.7.6). */
+    if (compositor->wallpaper_tree) {
+        zen_wallpaper_render_output(compositor, output);
+    }
+
+    /* Create "Zen OS" test overlay on the first output only (Req 5.3). */
+    if (!compositor->test_overlay && compositor->shell_overlay_tree) {
+        int ow = wlr_output->width;
+        int oh = wlr_output->height;
+
+        if (ow > 0 && oh > 0) {
+            /* Overlay dimensions: full-width strip at bottom, 48px tall. */
+            const int overlay_h = 48;
+            const int overlay_w = ow;
+
+            compositor->test_overlay = calloc(1, sizeof(*compositor->test_overlay));
+            if (compositor->test_overlay) {
+                if (zen_cairo_buffer_create(compositor->test_overlay,
+                                            compositor->renderer,
+                                            compositor->shell_overlay_tree,
+                                            overlay_w, overlay_h) == 0) {
+                    cairo_t *cr = compositor->test_overlay->cr;
+                    PangoLayout *layout =
+                        zen_cairo_buffer_get_pango(compositor->test_overlay);
+
+                    /* Clear to transparent. */
+                    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.0);
+                    cairo_paint(cr);
+
+                    /* Set up Pango font. */
+                    PangoFontDescription *font_desc =
+                        pango_font_description_from_string("Sans Bold 18");
+                    pango_layout_set_font_description(layout, font_desc);
+                    pango_font_description_free(font_desc);
+
+                    pango_layout_set_text(layout, "Zen OS", -1);
+
+                    /* Measure text to center it horizontally. */
+                    int text_w = 0, text_h = 0;
+                    pango_layout_get_pixel_size(layout, &text_w, &text_h);
+
+                    int x = (overlay_w - text_w) / 2;
+                    int y = (overlay_h - text_h) / 2;
+
+                    /* Render white text with slight shadow for visibility. */
+                    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.5);
+                    cairo_move_to(cr, x + 1, y + 1);
+                    pango_cairo_show_layout(cr, layout);
+
+                    cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.9);
+                    cairo_move_to(cr, x, y);
+                    pango_cairo_show_layout(cr, layout);
+
+                    zen_cairo_buffer_submit(compositor->test_overlay);
+
+                    /* Position overlay at bottom-center of the output. */
+                    wlr_scene_node_set_position(
+                        &compositor->test_overlay->scene_buffer->node,
+                        0, oh - overlay_h);
+
+                    wlr_log(WLR_INFO,
+                            "Test overlay created: 'Zen OS' at (%d,%d) on %s",
+                            x, oh - overlay_h, wlr_output->name);
+                } else {
+                    wlr_log(WLR_ERROR, "%s",
+                            "Failed to create test overlay cairo buffer");
+                    free(compositor->test_overlay);
+                    compositor->test_overlay = NULL;
+                }
+            }
+        }
+    }
 
     wlr_log(WLR_INFO, "Output configured: %s (%dx%d)",
             wlr_output->name,
@@ -282,6 +365,48 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
         goto cleanup;
     }
 
+    /* 13. Shell overlay tree — plain wlr_scene_tree for Cairo overlays (Req 5).
+     *     The test overlay ZenCairoBuffer is created in handle_new_output
+     *     once we know the primary output dimensions. */
+    compositor->shell_overlay_tree =
+        wlr_scene_tree_create(&compositor->scene->tree);
+    if (!compositor->shell_overlay_tree) {
+        wlr_log(WLR_ERROR, "%s", "Failed to create shell_overlay_tree");
+        goto cleanup;
+    }
+
+    /* 14. Wallpaper (Req 6) — must be initialized after wallpaper_tree is
+     *     created inside zen_wallpaper_init(). Actual per-output rendering
+     *     happens in handle_new_output() via zen_wallpaper_render_output(). */
+    if (zen_wallpaper_init(compositor) != 0) {
+        wlr_log(WLR_ERROR, "%s", "Failed to initialize wallpaper module");
+        goto cleanup;
+    }
+
+    /* 15. Keybinding registry (Req 7) — default bindings + optional JSON config. */
+    if (zen_keybinds_init(compositor) != 0) {
+        wlr_log(WLR_ERROR, "%s", "Failed to initialize keybinding registry");
+        goto cleanup;
+    }
+
+    /* 16. Layer shell protocol (Req 8) — wlr-layer-shell-v1 for panels/overlays. */
+    if (zen_layer_init(compositor) != 0) {
+        wlr_log(WLR_ERROR, "%s", "Failed to initialize layer shell");
+        goto cleanup;
+    }
+
+    /* 17. D-Bus interface (Req 9) — org.zenos.Compositor on session bus. */
+    if (zen_dbus_init(compositor) != 0) {
+        wlr_log(WLR_ERROR, "%s", "Failed to initialize D-Bus interface");
+        goto cleanup;
+    }
+
+    /* 18. Screen lock manager (Req 11) */
+    if (zen_lock_init(compositor) != 0) {
+        wlr_log(WLR_ERROR, "%s", "Failed to initialize lock module");
+        goto cleanup;
+    }
+
     wlr_log(WLR_INFO, "%s", "Zen OS Compositor initialized successfully");
     ret = 0;
 
@@ -313,6 +438,16 @@ void zen_compositor_destroy(struct ZenCompositor *compositor) {
     }
 
     /* Destroy modules in reverse initialization order. */
+    if (compositor->test_overlay) {
+        zen_cairo_buffer_destroy(compositor->test_overlay);
+        free(compositor->test_overlay);
+        compositor->test_overlay = NULL;
+    }
+    zen_lock_destroy(compositor);
+    zen_dbus_destroy(compositor);
+    zen_layer_destroy(compositor);
+    zen_keybinds_destroy(compositor);
+    zen_wallpaper_destroy(compositor);
     zen_input_destroy(compositor);
     zen_xdg_destroy(compositor);
 

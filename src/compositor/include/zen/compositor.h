@@ -45,6 +45,7 @@ struct wlr_xwayland;
 
 /* Module struct forward declarations */
 struct ZenToplevel;
+struct ZenCairoBuffer;
 
 /*
  * ZenCompositor — top-level compositor state.
@@ -89,6 +90,7 @@ struct ZenCompositor {
     /* ── Tier B: Shell Rendering Foundation ───────────────────────── */
     struct wlr_scene_tree        *shell_overlay_tree; /* for Cairo overlays */
     struct wlr_scene_tree        *wallpaper_tree;     /* bottom-most layer */
+    struct ZenCairoBuffer        *test_overlay;       /* "Zen OS" test overlay */
     struct wlr_layer_shell_v1    *layer_shell;
     struct wl_list                layer_surfaces;      /* ZenLayerSurface.link */
     struct wl_listener            new_layer_surface;
@@ -107,6 +109,13 @@ struct ZenCompositor {
     struct wlr_xwayland          *xwayland;           /* NULL if disabled */
     struct wl_listener            xwayland_ready;
     struct wl_listener            new_xwayland_surface;
+
+    /* ── Interactive move grab (Sub-Phase 1.13.3) ────────────────── */
+    struct ZenToplevel           *grabbed_toplevel;   /* NULL when no grab active */
+    double                        grab_x;             /* cursor x at grab start */
+    double                        grab_y;             /* cursor y at grab start */
+    int                           grab_node_x;        /* scene node x at grab start */
+    int                           grab_node_y;        /* scene node y at grab start */
 };
 
 /*

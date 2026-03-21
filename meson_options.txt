@@ -4,3 +4,7 @@ option('enable_kiosk', type: 'boolean', value: false,
     description: 'Enable kiosk single-app fullscreen mode')
 option('enable_tests', type: 'boolean', value: true,
     description: 'Build and register unit and integration tests')
+option('enable_asan', type: 'boolean', value: false,
+    description: 'Enable AddressSanitizer + LeakSanitizer in debug builds (adds -fsanitize=address,leak)')
+option('enable_xwayland', type: 'boolean', value: false,
+    description: 'Enable XWayland bridge for legacy X11 application support')

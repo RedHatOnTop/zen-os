@@ -18,15 +18,38 @@ compositor_src = files(
     'src/main.c',
     'src/xdg.c',
     'src/input.c',
+    'src/cairo_buffer.c',
+    'src/wallpaper.c',
+    'src/keybinds.c',
+    'src/layer.c',
+    'src/dbus.c',
+    'src/lock.c',
 )
 
+# Optional XWayland support
+if get_option('enable_xwayland')
+    compositor_src += files('src/xwayland.c')
+endif
+
 compositor_inc = include_directories('include')
+
+# Conditional compile flags for optional dependencies.
+compositor_c_args = ['-DWLR_USE_UNSTABLE', '-I' + wlr_protocol_inc_path]
+if libpam.found()
+    compositor_c_args += ['-DHAVE_PAM']
+endif
+if libsystemd.found()
+    compositor_c_args += ['-DHAVE_SYSTEMD']
+endif
+if get_option('enable_xwayland')
+    compositor_c_args += ['-DHAVE_XWAYLAND']
+endif
 
 executable('zen-compositor',
     compositor_src,
     include_directories: compositor_inc,
     dependencies: [scenefx, wayland_server, xkbcommon, cairo, pangocairo, libsystemd, libpam, zen_common_dep],
-    c_args: ['-DWLR_USE_UNSTABLE', '-I' + wlr_protocol_inc_path],
+    c_args: compositor_c_args,
     install: true,
 )
 

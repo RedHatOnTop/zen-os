@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include <wayland-server-core.h>
+#include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_scene.h>
@@ -126,18 +127,22 @@ void zen_xdg_destroy(struct ZenCompositor *compositor) {
     }
 
     /* Clean up any remaining toplevels. */
-    struct ZenToplevel *toplevel, *tmp;
-    wl_list_for_each_safe(toplevel, tmp, &compositor->toplevels, link) {
-        wl_list_remove(&toplevel->link);
-        free(toplevel->title);
-        free(toplevel->app_id);
-        free(toplevel);
+    if (compositor->toplevels.next != NULL) {
+        struct ZenToplevel *toplevel, *tmp;
+        wl_list_for_each_safe(toplevel, tmp, &compositor->toplevels, link) {
+            wl_list_remove(&toplevel->link);
+            free(toplevel->title);
+            free(toplevel->app_id);
+            free(toplevel);
+        }
     }
 
     compositor->focused_toplevel = NULL;
 
     /* Remove the new_xdg_toplevel listener. */
-    wl_list_remove(&compositor->new_xdg_toplevel.link);
+    if (compositor->new_xdg_toplevel.link.next != NULL) {
+        wl_list_remove(&compositor->new_xdg_toplevel.link);
+    }
 
     wlr_log(WLR_INFO, "%s", "XDG shell destroyed");
 }
@@ -213,6 +218,15 @@ static void handle_toplevel_destroy(struct wl_listener *listener, void *data) {
         zen_xdg_focus_toplevel(compositor, next);
     }
 
+    /* If this toplevel was being interactively moved, cancel the grab. */
+    if (compositor->grabbed_toplevel == toplevel) {
+        compositor->grabbed_toplevel = NULL;
+        compositor->grab_x           = 0.0;
+        compositor->grab_y           = 0.0;
+        compositor->grab_node_x      = 0;
+        compositor->grab_node_y      = 0;
+    }
+
     /* Remove all per-toplevel listeners. */
     wl_list_remove(&toplevel->map.link);
     wl_list_remove(&toplevel->unmap.link);
@@ -236,9 +250,25 @@ static void handle_toplevel_destroy(struct wl_listener *listener, void *data) {
 
 static void handle_toplevel_request_move(struct wl_listener *listener,
                                          void *data) {
-    (void)listener;
     (void)data;
-    /* TODO(1.3.5): interactive move */
+    struct ZenToplevel *toplevel =
+        wl_container_of(listener, toplevel, request_move);
+    struct ZenCompositor *compositor = toplevel->compositor;
+
+    if (!compositor->cursor || !toplevel->scene_tree) {
+        return;
+    }
+
+    /* Record grab state: cursor position and scene node origin at grab start. */
+    compositor->grabbed_toplevel = toplevel;
+    compositor->grab_x           = compositor->cursor->x;
+    compositor->grab_y           = compositor->cursor->y;
+    compositor->grab_node_x      = toplevel->scene_tree->node.x;
+    compositor->grab_node_y      = toplevel->scene_tree->node.y;
+
+    wlr_log(WLR_DEBUG, "Interactive move started: toplevel=%p node=(%d,%d)",
+            (void *)toplevel,
+            compositor->grab_node_x, compositor->grab_node_y);
 }
 
 static void handle_toplevel_request_resize(struct wl_listener *listener,
@@ -459,8 +489,9 @@ static void handle_new_xdg_toplevel(struct wl_listener *listener,
 
     wlr_log(WLR_INFO, "New XDG toplevel created: %p", (void *)toplevel);
 
-    /* Focus the new toplevel. */
-    zen_xdg_focus_toplevel(compositor, toplevel);
+    /* Focus is deferred to handle_toplevel_map — calling
+     * wlr_xdg_toplevel_set_activated() before the surface is initialized
+     * triggers an assertion failure in wlr_xdg_surface_schedule_configure(). */
     return;
 
 cleanup:

@@ -27,11 +27,20 @@
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/util/log.h>
+#include <wlr/types/wlr_xdg_shell.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include "zen/compositor.h"
 #include "zen/input.h"
+#include "zen/keybinds.h"
+#include "zen/lock.h"
 #include "zen/xdg.h"
+
+/* Forward declaration for lock key handler (defined in lock.c). */
+bool zen_lock_handle_key(struct ZenCompositor *compositor,
+                          uint32_t keycode_xkb,
+                          uint32_t keysym,
+                          bool pressed);
 
 /* Default xcursor theme size. */
 #define ZEN_XCURSOR_SIZE 24
@@ -56,19 +65,6 @@ static struct ZenToplevel *toplevel_at_scene_node(struct wlr_scene_node *node) {
 
 /* ── Keyboard listeners ──────────────────────────────────────────────────── */
 
-/*
- * Stub for zen_keybinds_handle_key() — always returns false.
- * Replaced by the real implementation in Sub-Phase 1.8 (keybinds.c).
- */
-static bool zen_keybinds_handle_key_stub(struct ZenCompositor *compositor,
-                                         uint32_t modifiers,
-                                         xkb_keysym_t keysym) {
-    (void)compositor;
-    (void)modifiers;
-    (void)keysym;
-    return false;
-}
-
 static void handle_keyboard_key(struct wl_listener *listener, void *data) {
     struct ZenKeyboard *keyboard =
         wl_container_of(listener, keyboard, key);
@@ -82,6 +78,19 @@ static void handle_keyboard_key(struct wl_listener *listener, void *data) {
     int nsyms = xkb_state_key_get_syms(wlr_kb->xkb_state, keycode, &syms);
 
     /*
+     * While locked, route ALL key events to the lock handler.
+     * No events are forwarded to clients while the screen is locked.
+     */
+    if (compositor->locked) {
+        bool pressed = (event->state == WL_KEYBOARD_KEY_STATE_PRESSED);
+        for (int i = 0; i < nsyms; i++) {
+            zen_lock_handle_key(compositor, keycode, syms[i], pressed);
+        }
+        /* Reset idle timer on any key activity. */
+        return;
+    }
+
+    /*
      * Check keybindings first (only on key press, not release).
      * If any resolved keysym matches a binding, consume the event.
      */
@@ -89,7 +98,7 @@ static void handle_keyboard_key(struct wl_listener *listener, void *data) {
     if (event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
         uint32_t modifiers = wlr_keyboard_get_modifiers(wlr_kb);
         for (int i = 0; i < nsyms; i++) {
-            if (zen_keybinds_handle_key_stub(compositor, modifiers, syms[i])) {
+            if (zen_keybinds_handle_key(compositor, modifiers, syms[i])) {
                 consumed = true;
                 break;
             }
@@ -158,6 +167,18 @@ static void handle_cursor_button(struct wl_listener *listener, void *data) {
     struct ZenCompositor *compositor =
         wl_container_of(listener, compositor, cursor_button);
     struct wlr_pointer_button_event *event = data;
+
+    /* Release any active interactive move grab on button release. */
+    if (event->state == WL_POINTER_BUTTON_STATE_RELEASED &&
+        compositor->grabbed_toplevel) {
+        wlr_log(WLR_DEBUG, "Interactive move ended: toplevel=%p",
+                (void *)compositor->grabbed_toplevel);
+        compositor->grabbed_toplevel = NULL;
+        compositor->grab_x           = 0.0;
+        compositor->grab_y           = 0.0;
+        compositor->grab_node_x      = 0;
+        compositor->grab_node_y      = 0;
+    }
 
     /* On press, focus the toplevel under the cursor. */
     if (event->state == WL_POINTER_BUTTON_STATE_PRESSED) {
@@ -303,6 +324,66 @@ void zen_input_process_cursor_motion(struct ZenCompositor *compositor,
         return;
     }
 
+    /*
+     * If an interactive move grab is active, reposition the grabbed toplevel
+     * by the delta from the grab origin.  wlr_scene_node_set_position() uses
+     * global scene coordinates, so this works seamlessly across outputs.
+     */
+    if (compositor->grabbed_toplevel) {
+        struct ZenToplevel *tl = compositor->grabbed_toplevel;
+        if (tl->scene_tree) {
+            double dx = compositor->cursor->x - compositor->grab_x;
+            double dy = compositor->cursor->y - compositor->grab_y;
+            int new_x = compositor->grab_node_x + (int)dx;
+            int new_y = compositor->grab_node_y + (int)dy;
+
+            wlr_scene_node_set_position(&tl->scene_tree->node, new_x, new_y);
+
+            /*
+             * Detect output boundary crossing: compare toplevel center to
+             * output layout regions.  In wlroots scene-graph compositors,
+             * re-parenting is not required — global coordinates work across
+             * outputs automatically.  We log the crossing for diagnostics.
+             */
+            struct wlr_xdg_toplevel *xdg_tl = tl->xdg_toplevel;
+            if (xdg_tl) {
+                int w = xdg_tl->base->current.geometry.width;
+                int h = xdg_tl->base->current.geometry.height;
+                double cx = new_x + w / 2.0;
+                double cy = new_y + h / 2.0;
+                struct wlr_output *dest =
+                    wlr_output_layout_output_at(compositor->output_layout,
+                                                cx, cy);
+                if (dest) {
+                    wlr_log(WLR_DEBUG,
+                            "Toplevel center (%.0f,%.0f) on output: %s",
+                            cx, cy, dest->name);
+                }
+            }
+        }
+        /* Do not update pointer focus while dragging. */
+        return;
+    }
+
+    /*
+     * Determine which output the cursor is currently on.
+     *
+     * wlr_cursor handles cross-output movement automatically when attached
+     * to an output layout via wlr_cursor_attach_output_layout() — no special
+     * boundary-crossing code is needed here.  We query the current output
+     * for logging and to support future per-output cursor theming.
+     */
+    struct wlr_output *cursor_output = wlr_output_layout_output_at(
+        compositor->output_layout,
+        compositor->cursor->x,
+        compositor->cursor->y);
+    if (cursor_output) {
+        wlr_log(WLR_DEBUG, "Cursor on output: %s (%.0f, %.0f)",
+                cursor_output->name,
+                compositor->cursor->x,
+                compositor->cursor->y);
+    }
+
     double sx, sy;
     struct wlr_surface *surface = NULL;
 
@@ -410,14 +491,16 @@ void zen_input_destroy(struct ZenCompositor *compositor) {
         return;
     }
 
-    /* Free all tracked keyboards. */
-    struct ZenKeyboard *kb, *tmp;
-    wl_list_for_each_safe(kb, tmp, &compositor->keyboards, link) {
-        wl_list_remove(&kb->key.link);
-        wl_list_remove(&kb->modifiers.link);
-        wl_list_remove(&kb->destroy.link);
-        wl_list_remove(&kb->link);
-        free(kb);
+    /* Free all tracked keyboards (if list was initialized). */
+    if (compositor->keyboards.next != NULL) {
+        struct ZenKeyboard *kb, *tmp;
+        wl_list_for_each_safe(kb, tmp, &compositor->keyboards, link) {
+            wl_list_remove(&kb->key.link);
+            wl_list_remove(&kb->modifiers.link);
+            wl_list_remove(&kb->destroy.link);
+            wl_list_remove(&kb->link);
+            free(kb);
+        }
     }
 
     if (compositor->xcursor_mgr) {

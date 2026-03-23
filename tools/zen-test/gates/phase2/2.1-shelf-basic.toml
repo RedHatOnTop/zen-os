@@ -1,0 +1,39 @@
+[gate]
+name = "Sub-Phase 2.1: Shelf Basic Rendering"
+phase = "2"
+sub_phase = "2.1"
+description = "Shelf bar renders at bottom of screen with clock; no ASan errors"
+tags = ["shell", "shelf", "rendering", "cairo"]
+timeout_seconds = 180
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+[[assert.serial]]
+pattern = "ZEN_BOOT_OK"
+description = "Compositor boots successfully"
+
+[[assert.exec]]
+command = "pgrep zen-compositor"
+exit_code = 0
+description = "Compositor process is running"
+timeout_seconds = 5
+
+# main.c logs this after zen_shell_init() succeeds
+[[assert.serial]]
+pattern = "Shell module initialized"
+description = "Shell/shelf module initialized successfully"
+
+[[assert.screenshot]]
+type = "non_blank"
+min_size_bytes = 10000
+description = "Screen is rendering (non-blank frame)"
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors on shelf init"
+
+[[assert.serial_absent]]
+pattern = "segfault"
+description = "No segfaults"

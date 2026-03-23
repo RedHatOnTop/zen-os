@@ -33,6 +33,9 @@ endif
 
 compositor_inc = include_directories('include')
 
+# Shell module include directories (for zen/shell.h etc.)
+shell_inc = include_directories('../shell/include')
+
 # Conditional compile flags for optional dependencies.
 compositor_c_args = ['-DWLR_USE_UNSTABLE', '-I' + wlr_protocol_inc_path]
 if libpam.found()
@@ -47,8 +50,8 @@ endif
 
 executable('zen-compositor',
     compositor_src,
-    include_directories: compositor_inc,
-    dependencies: [scenefx, wayland_server, xkbcommon, cairo, pangocairo, libsystemd, libpam, zen_common_dep],
+    include_directories: [compositor_inc, shell_inc],
+    dependencies: [scenefx, wayland_server, xkbcommon, cairo, pangocairo, libsystemd, libpam, zen_common_dep, zen_shell_dep],
     c_args: compositor_c_args,
     install: true,
 )

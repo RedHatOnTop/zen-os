@@ -43,6 +43,7 @@
 #include "zen/xdg.h"
 #include "zen/cairo_buffer.h"
 #include "zen/wallpaper.h"
+#include "zen/shell.h"
 
 /* Zen OS brand color: deep navy (#1a1a2e) */
 static const float ZEN_CLEAR_COLOR[4] = {
@@ -400,10 +401,11 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
         goto cleanup;
     }
 
-    /* 17. D-Bus interface (Req 9) — org.zenos.Compositor on session bus. */
+    /* 17. D-Bus interface (Req 9) — org.zenos.Compositor on session bus.
+     *     Non-fatal: compositor runs without D-Bus in headless/test environments. */
     if (zen_dbus_init(compositor) != 0) {
-        wlr_log(WLR_ERROR, "%s", "Failed to initialize D-Bus interface");
-        goto cleanup;
+        wlr_log(WLR_INFO, "%s",
+                "D-Bus interface unavailable (headless/no session bus) — continuing");
     }
 
     /* 18. Screen lock manager (Req 11) */
@@ -411,6 +413,18 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
         wlr_log(WLR_ERROR, "%s", "Failed to initialize lock module");
         goto cleanup;
     }
+
+    /* 19. Desktop shell (Phase 2) — shelf, theme, launcher stubs. */
+    compositor->shell = calloc(1, sizeof(*compositor->shell));
+    if (!compositor->shell) {
+        wlr_log(WLR_ERROR, "%s", "Failed to allocate shell");
+        goto cleanup;
+    }
+    if (zen_shell_init(compositor->shell, compositor) != 0) {
+        wlr_log(WLR_ERROR, "%s", "Failed to initialize shell module");
+        goto cleanup;
+    }
+    wlr_log(WLR_INFO, "%s", "Shell module initialized");
 
     wlr_log(WLR_INFO, "%s", "Zen OS Compositor initialized successfully");
     ret = 0;
@@ -449,6 +463,11 @@ void zen_compositor_destroy(struct ZenCompositor *compositor) {
         zen_cairo_buffer_destroy(compositor->test_overlay);
         free(compositor->test_overlay);
         compositor->test_overlay = NULL;
+    }
+    if (compositor->shell) {
+        zen_shell_destroy(compositor->shell);
+        free(compositor->shell);
+        compositor->shell = NULL;
     }
     zen_lock_destroy(compositor);
     zen_dbus_destroy(compositor);

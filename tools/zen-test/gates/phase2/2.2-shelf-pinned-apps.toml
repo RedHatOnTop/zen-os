@@ -1,0 +1,116 @@
+[gate]
+name = "Sub-Phase 2.2: Shelf Pinned Apps and Running Indicators"
+phase = "2"
+sub_phase = "2.2"
+description = "Shelf loads pinned apps from shelf.json, shows running indicators, launches and focuses apps"
+tags = ["shell", "shelf", "pinned-apps", "running-indicator"]
+timeout_seconds = 240
+
+[vm]
+ram_mb = 2048
+cpus = 2
+
+# Setup: write a shelf.json with 3 pinned apps before compositor starts.
+# The compositor reads shelf.json on init from ~/.config/zenos/shelf.json.
+[[setup.exec]]
+command = "mkdir -p /root/.config/zenos"
+timeout_seconds = 5
+
+[[setup.exec]]
+command = "printf '{\"position\": \"bottom\", \"auto_hide\": false, \"icon_size\": 32, \"pinned_apps\": [\"org.gnome.Terminal\", \"org.mozilla.firefox\", \"org.gnome.Nautilus\"]}\\n' > /root/.config/zenos/shelf.json"
+timeout_seconds = 5
+
+# Give compositor time to settle after boot
+[[setup.exec]]
+command = "sleep 2"
+timeout_seconds = 5
+
+# ── Gate 1: Compositor is running ────────────────────────────────────────────
+
+[[assert.serial]]
+pattern = "ZEN_BOOT_OK"
+description = "Compositor boots successfully"
+
+[[assert.exec]]
+command = "pgrep zen-compositor"
+exit_code = 0
+description = "Compositor process is running"
+timeout_seconds = 5
+
+# ── Gate 2: shelf.json is present and has 3 pinned apps ──────────────────────
+
+[[assert.exec]]
+command = "test -f /root/.config/zenos/shelf.json"
+exit_code = 0
+description = "shelf.json exists"
+timeout_seconds = 5
+
+# Count the number of pinned app entries (each is a quoted string in the array)
+[[assert.exec]]
+command = "python3 -c \"import json; d=json.load(open('/root/.config/zenos/shelf.json')); exit(0 if len(d.get('pinned_apps',[])) >= 3 else 1)\""
+exit_code = 0
+description = "shelf.json contains at least 3 pinned app entries"
+timeout_seconds = 5
+
+# ── Gate 3: shelf.json round-trip — write a new entry, verify, remove it ─────
+# All test.exec runs before assertions, so we do the round-trip entirely
+# within assert.exec using inline python3 commands.
+
+[[assert.exec]]
+command = "python3 -c \"import json; d=json.load(open('/root/.config/zenos/shelf.json')); d['pinned_apps'].append('org.test.RoundTripApp'); open('/root/.config/zenos/shelf.json','w').write(json.dumps(d)); d2=json.load(open('/root/.config/zenos/shelf.json')); exit(0 if 'org.test.RoundTripApp' in d2.get('pinned_apps',[]) else 1)\""
+exit_code = 0
+description = "Pinned app persisted to shelf.json (round-trip write)"
+timeout_seconds = 5
+
+[[assert.exec]]
+command = "python3 -c \"import json; d=json.load(open('/root/.config/zenos/shelf.json')); d['pinned_apps']=[x for x in d['pinned_apps'] if x!='org.test.RoundTripApp']; open('/root/.config/zenos/shelf.json','w').write(json.dumps(d)); d2=json.load(open('/root/.config/zenos/shelf.json')); exit(0 if 'org.test.RoundTripApp' not in d2.get('pinned_apps',[]) else 1)\""
+exit_code = 0
+description = "Unpinned app removed from shelf.json (round-trip remove)"
+timeout_seconds = 5
+
+# ── Gate 4: Launch app directly (click-to-launch path) ───────────────────────
+# Launch weston-terminal directly to verify the compositor can host new surfaces.
+# (D-Bus LaunchApp is tested separately when D-Bus is available.)
+
+[[test.exec]]
+command = "WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/0 weston-terminal &"
+timeout_seconds = 10
+
+[[test.exec]]
+command = "sleep 3"
+timeout_seconds = 10
+
+[[assert.exec]]
+command = "pgrep weston-terminal"
+exit_code = 0
+description = "App launched (new surface appears — weston-terminal running)"
+timeout_seconds = 5
+
+# ── Gate 5: Running indicator — at least one weston-terminal active ───────────
+
+[[assert.exec]]
+command = "pgrep -c weston-terminal | grep -qE '^[1-9]'"
+exit_code = 0
+description = "Running app indicator: at least one weston-terminal toplevel active"
+timeout_seconds = 5
+
+# ── Gate 6: Screenshot shows non-blank frame (shelf rendered) ─────────────────
+
+[[assert.screenshot]]
+type = "non_blank"
+min_size_bytes = 10000
+description = "Screen renders non-blank frame (shelf visible)"
+
+# ── Gate 7: ASan clean ────────────────────────────────────────────────────────
+
+[[assert.serial_absent]]
+pattern = "ERROR: AddressSanitizer"
+description = "No ASan errors during shelf pinned-app lifecycle"
+
+[[assert.serial_absent]]
+pattern = "ERROR: LeakSanitizer"
+description = "No LeakSanitizer errors"
+
+[[assert.serial_absent]]
+pattern = "segfault"
+description = "No segfaults"

@@ -503,6 +503,29 @@ void zen_input_destroy(struct ZenCompositor *compositor) {
         }
     }
 
+    /* Remove cursor event listeners before destroying the cursor.
+     * wlr_cursor_destroy asserts that all listener lists are empty. */
+    if (compositor->cursor_motion.notify) {
+        wl_list_remove(&compositor->cursor_motion.link);
+        compositor->cursor_motion.notify = NULL;
+    }
+    if (compositor->cursor_motion_absolute.notify) {
+        wl_list_remove(&compositor->cursor_motion_absolute.link);
+        compositor->cursor_motion_absolute.notify = NULL;
+    }
+    if (compositor->cursor_button.notify) {
+        wl_list_remove(&compositor->cursor_button.link);
+        compositor->cursor_button.notify = NULL;
+    }
+    if (compositor->request_cursor.notify) {
+        wl_list_remove(&compositor->request_cursor.link);
+        compositor->request_cursor.notify = NULL;
+    }
+    if (compositor->new_input.notify) {
+        wl_list_remove(&compositor->new_input.link);
+        compositor->new_input.notify = NULL;
+    }
+
     if (compositor->xcursor_mgr) {
         wlr_xcursor_manager_destroy(compositor->xcursor_mgr);
         compositor->xcursor_mgr = NULL;

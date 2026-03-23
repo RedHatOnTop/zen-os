@@ -225,9 +225,14 @@ static void handle_new_output(struct wl_listener *listener, void *data) {
  * init script.  This guarantees the signal only fires when the compositor
  * is actually running and rendering.
  */
-static void emit_boot_signal(void) {
+static void emit_boot_signal(const char *wayland_socket) {
     FILE *serial = fopen("/dev/ttyS0", "w");
     if (serial) {
+        /* Write socket name first so gate TOML can parse it, then the
+         * boot-OK sentinel that zen-test waits for. */
+        if (wayland_socket) {
+            fprintf(serial, "ZEN_WAYLAND_SOCKET=%s\n", wayland_socket);
+        }
         fprintf(serial, "ZEN_BOOT_OK\n");
         fflush(serial);
         fclose(serial);
@@ -418,15 +423,17 @@ cleanup:
 }
 
 void zen_compositor_run(struct ZenCompositor *compositor) {
-    /* Emit boot signal BEFORE entering the event loop.
-     * This tells zen-test-cli that initialization is complete. */
-    emit_boot_signal();
-
+    /* Create the Wayland socket FIRST so clients can connect as soon as
+     * the boot signal fires. */
     const char *socket = wl_display_add_socket_auto(compositor->wl_display);
     if (socket) {
         wlr_log(WLR_INFO, "Wayland socket: %s", socket);
         setenv("WAYLAND_DISPLAY", socket, true);
     }
+
+    /* Emit boot signal AFTER the socket exists.
+     * This tells zen-test that the compositor is ready for clients. */
+    emit_boot_signal(socket);
 
     wlr_log(WLR_INFO, "%s", "Entering event loop");
     wl_display_run(compositor->wl_display);

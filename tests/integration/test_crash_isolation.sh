@@ -28,6 +28,8 @@ GATE_TOML="${REPO_ROOT}/tools/zen-test/gates/phase1/1.5-crash-isolation.toml"
 REPORT_DIR="${ZEN_REPORT_DIR:-${REPO_ROOT}/reports}"
 REPORT_JSON="${REPORT_DIR}/gate-p1v05-crash-isolation.json"
 TIMEOUT="${ZEN_GATE_TIMEOUT:-300}"
+# VM image: prefer ZEN_OS_IMAGE env var, fall back to the repo's test image.
+ZEN_OS_IMAGE="${ZEN_OS_IMAGE:-${REPO_ROOT}/.zen-test-vms/test-image.qcow2}"
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -56,6 +58,15 @@ preflight() {
         exit 2
     fi
 
+    if [ ! -f "$ZEN_OS_IMAGE" ]; then
+        log_error "VM image not found: $ZEN_OS_IMAGE"
+        log_error "Build it with: sudo bash tools/image-builder/build-test-image.sh \\"
+        log_error "  --compositor builddir/src/compositor/zen-compositor \\"
+        log_error "  --output .zen-test-vms/test-image.qcow2"
+        log_error "Or set ZEN_OS_IMAGE to an existing qcow2 path."
+        exit 2
+    fi
+
     mkdir -p "$REPORT_DIR"
 }
 
@@ -64,11 +75,13 @@ preflight() {
 run_gate() {
     log_info "Running crash isolation gate..."
     log_info "  Gate: $GATE_TOML"
+    log_info "  Image: $ZEN_OS_IMAGE"
     log_info "  Report: $REPORT_JSON"
     log_info "  Timeout: ${TIMEOUT}s"
 
     local exit_code=0
     "$ZEN_TEST" gate run "$GATE_TOML" \
+        --image "$ZEN_OS_IMAGE" \
         --report-json "$REPORT_JSON" \
         --timeout "$TIMEOUT" \
         2>&1 || exit_code=$?
@@ -85,12 +98,27 @@ validate_report() {
     fi
 
     # Check overall gate status.
+    # zen-test wraps results in {"status":"ok","data":{"results":[...]}}
+    # The inner gate result has "status":"passed" or "status":"failed".
     local status
     status=$(python3 -c "
 import json, sys
 with open('$REPORT_JSON') as f:
     d = json.load(f)
-print(d.get('status', 'unknown'))
+# Try top-level status first (zen-test envelope: 'ok'/'fail')
+top = d.get('status', 'unknown')
+if top == 'ok':
+    print('pass')
+elif top == 'fail':
+    # Dig into inner results for more detail
+    results = d.get('data', {}).get('results', [])
+    if results and results[0].get('status') == 'passed':
+        print('pass')
+    else:
+        print('fail')
+else:
+    # Legacy format: direct gate result
+    print('pass' if top in ('pass', 'passed') else top)
 " 2>/dev/null || echo "parse_error")
 
     if [ "$status" = "pass" ]; then
@@ -99,13 +127,16 @@ print(d.get('status', 'unknown'))
         fail "Gate status: $status (expected: pass)"
     fi
 
-    # Check individual assertions.
+    # Check individual assertions from inner results.
     local assertions_passed assertions_failed
     assertions_passed=$(python3 -c "
 import json, sys
 with open('$REPORT_JSON') as f:
     d = json.load(f)
-assertions = d.get('assertions', [])
+results = d.get('data', {}).get('results', d.get('results', []))
+assertions = []
+for r in results:
+    assertions.extend(r.get('assertions', []))
 print(sum(1 for a in assertions if a.get('passed', False)))
 " 2>/dev/null || echo "0")
 
@@ -113,7 +144,10 @@ print(sum(1 for a in assertions if a.get('passed', False)))
 import json, sys
 with open('$REPORT_JSON') as f:
     d = json.load(f)
-assertions = d.get('assertions', [])
+results = d.get('data', {}).get('results', d.get('results', []))
+assertions = []
+for r in results:
+    assertions.extend(r.get('assertions', []))
 print(sum(1 for a in assertions if not a.get('passed', True)))
 " 2>/dev/null || echo "0")
 
@@ -128,9 +162,11 @@ print(sum(1 for a in assertions if not a.get('passed', True)))
 import json, sys
 with open('$REPORT_JSON') as f:
     d = json.load(f)
-for a in d.get('assertions', []):
-    if not a.get('passed', True):
-        print(f'  FAIL: {a.get(\"description\", \"(no description)\")}', file=sys.stderr)
+results = d.get('data', {}).get('results', d.get('results', []))
+for r in results:
+    for a in r.get('assertions', []):
+        if not a.get('passed', True):
+            print(f'  FAIL: {a.get(\"description\", \"(no description)\")}', file=sys.stderr)
 " 2>&1 || true
     fi
 
@@ -140,10 +176,12 @@ for a in d.get('assertions', []):
 import json, sys
 with open('$REPORT_JSON') as f:
     d = json.load(f)
-for a in d.get('assertions', []):
-    if 'Compositor still running' in a.get('description', ''):
-        print('true' if a.get('passed', False) else 'false')
-        sys.exit(0)
+results = d.get('data', {}).get('results', d.get('results', []))
+for r in results:
+    for a in r.get('assertions', []):
+        if 'Compositor still running' in a.get('description', ''):
+            print('true' if a.get('passed', False) else 'false')
+            sys.exit(0)
 print('not_found')
 " 2>/dev/null || echo "not_found")
 

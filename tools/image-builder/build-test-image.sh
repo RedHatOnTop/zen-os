@@ -109,6 +109,7 @@ apt-get install -y -qq --no-install-recommends \
     libxcb-render0 libxcb-render-util0 libxcb-shm0 \
     libxcb-xfixes0 libxcb-xinput0 libxcb-ewmh2 libxcb-icccm4 libxcb-res0 \
     jq libasan8 libubsan1 \
+    dbus dbus-x11 \
     wayland-utils weston wlr-randr
 systemctl enable serial-getty@ttyS0.service
 passwd -d root
@@ -149,8 +150,8 @@ chroot "$ROOTFS" ldconfig
 cat > "$ROOTFS/etc/systemd/system/zen-compositor.service" <<'UNITEOF'
 [Unit]
 Description=Zen OS Wayland Compositor
-After=systemd-logind.service
-Wants=systemd-logind.service
+After=dbus.service
+Wants=dbus.service
 
 [Service]
 Type=simple
@@ -164,7 +165,7 @@ Environment=LD_LIBRARY_PATH=/usr/lib/zen
 Environment=ASAN_OPTIONS=detect_odr_violation=0
 ExecStartPre=/bin/mkdir -p /run/user/0
 ExecStartPre=/bin/chmod 0700 /run/user/0
-ExecStart=/usr/bin/zen-compositor
+ExecStart=/usr/bin/dbus-run-session /usr/bin/zen-compositor
 StandardOutput=journal+console
 StandardError=journal+console
 Restart=on-failure

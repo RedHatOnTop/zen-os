@@ -10,20 +10,27 @@ timeout_seconds = 300
 ram_mb = 2048
 cpus = 2
 
-# Setup: launch test clients.
+# Setup: wait for compositor socket, then launch a test client.
+# The compositor uses wl_display_add_socket_auto() which picks wayland-1
+# (wayland-0 may be taken by the system). We wait for the socket file to
+# appear under XDG_RUNTIME_DIR before launching weston-terminal.
 [[setup.exec]]
-command = "WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/0 weston-terminal &"
+command = "for i in $(seq 1 30); do [ -S /run/user/0/wayland-1 ] && break; [ -S /run/user/0/wayland-0 ] && break; sleep 1; done; echo 'socket ready'"
+timeout_seconds = 35
+
+[[setup.exec]]
+command = "WAYLAND_DISPLAY=$(ls /run/user/0/wayland-? 2>/dev/null | head -1 | xargs basename) XDG_RUNTIME_DIR=/run/user/0 weston-terminal &"
 timeout_seconds = 5
 
 [[setup.exec]]
-command = "sleep 2"
-timeout_seconds = 5
+command = "sleep 3"
+timeout_seconds = 10
 
-# Test: kill and re-launch 10 times.
+# Test: kill and re-launch 10 times, waiting between each cycle.
 [[test.exec_loop]]
 count = 10
-command = "kill -9 $(pgrep -n weston-terminal) 2>/dev/null; sleep 1; WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/0 weston-terminal &; sleep 1"
-timeout_seconds = 15
+command = "WDISP=$(ls /run/user/0/wayland-? 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo wayland-1); kill -9 $(pgrep -n weston-terminal 2>/dev/null) 2>/dev/null || true; sleep 1; WAYLAND_DISPLAY=$WDISP XDG_RUNTIME_DIR=/run/user/0 weston-terminal &; sleep 2"
+timeout_seconds = 20
 
 # Assertions.
 [[assert.exec]]

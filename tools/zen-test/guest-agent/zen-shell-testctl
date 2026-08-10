@@ -1,0 +1,20 @@
+#!/bin/sh
+
+set -eu
+
+STATE_PATH="/run/zenos-test/shell-state.json"
+MODE="${1:-dump}"
+
+case "$MODE" in
+    dump)
+        [ -f "$STATE_PATH" ] || exit 1
+        cat "$STATE_PATH"
+        ;;
+    path)
+        printf '%s\n' "$STATE_PATH"
+        ;;
+    *)
+        printf 'usage: %s [dump|path]\n' "$0" >&2
+        exit 4
+        ;;
+esac

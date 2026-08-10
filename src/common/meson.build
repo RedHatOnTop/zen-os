@@ -6,6 +6,7 @@ zen_common_src = files(
     'src/dbus-errors.c',
     'src/dbus-helpers.c',
     'src/models.c',
+    'src/test-hooks.c',
 )
 
 zen_common_lib = static_library('zen-common',

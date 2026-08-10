@@ -426,10 +426,18 @@ async fn handle_gate(action: GateAction, start: Instant) {
                         serde_json::json!({
                             "valid": true,
                             "name": spec.gate.name,
+                            "pre_boot_steps": spec.pre_boot.as_ref().map(|s| s.exec.len()).unwrap_or(0),
+                            "test_steps": spec.test.as_ref().map(|t| t.steps.len()).unwrap_or(0),
                             "assertions": {
                                 "serial": spec.assert.serial.len(),
                                 "serial_absent": spec.assert.serial_absent.len(),
                                 "exec": spec.assert.exec.len(),
+                                "file_exists": spec.assert.file_exists.len(),
+                                "file_json_value": spec.assert.file_json_value.len(),
+                                "exec_json_value": spec.assert.exec_json_value.len(),
+                                "exec_stdout_regex": spec.assert.exec_stdout_regex.len(),
+                                "eventually_exec": spec.assert.eventually_exec.len(),
+                                "eventually_absent": spec.assert.eventually_absent.len(),
                                 "screenshot": spec.assert.screenshot.len(),
                             }
                         }),

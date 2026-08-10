@@ -52,3 +52,7 @@ reports/screenshots/*.ppm.ppm
 # Misc
 wget-log*
 CUsersjin14Projectszen-os/
+reports/semantic-live/
+reports/screenshots/*.ppm
+reports/screenshots/*.bmp
+shelf-screenshot.png

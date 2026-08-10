@@ -393,6 +393,7 @@ fn is_blank(ppm_path: &Path) -> Result<bool>;
 struct GateSpec {
     gate: GateMeta,
     vm: Option<VmSpec>,
+    pre_boot: Option<Vec<SetupStep>>,
     setup: Option<Vec<SetupStep>>,
     test: Option<Vec<TestStep>>,
     assert: Assertions,
@@ -421,7 +422,7 @@ struct Assertions {
 
 Execution flow:
 ```
-parse TOML → create VM → boot VM → wait for boot signal
+parse TOML → create VM → apply pre_boot.exec offline mutations → boot VM → wait for boot signal
   → run setup.exec commands
   → run test.exec / test.exec_loop
   → evaluate assert.serial (pattern present in log)
@@ -446,6 +447,10 @@ struct GateResult {
     screenshots: Vec<PathBuf>,
 }
 ```
+
+`pre_boot.exec` runs against the overlay qcow2 before the guest boots. The
+current implementation uses `sudo -n`, `qemu-nbd`, `mount`, and `chroot`, so it
+requires passwordless sudo in the WSL test environment.
 
 ### `gate/report.rs` — Output Formatters
 

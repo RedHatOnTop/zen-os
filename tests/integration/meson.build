@@ -11,10 +11,14 @@ test('test_asan_lifecycle',
 )
 
 # test_crash_isolation.sh: Property 11 — client crash does not affect others.
-# Requires a running compositor; skipped on host without QEMU.
+# Requires a bootable qcow2 VM image. Reads ZEN_OS_IMAGE env var (falls back
+# to .zen-test-vms/test-image.qcow2 in the repo root).
 test('test_crash_isolation',
     find_program('test_crash_isolation.sh', dirs: [meson.current_source_dir()]),
     suite: 'integration',
-    timeout: 60,
-    env: ['ASAN_OPTIONS=detect_leaks=0'],
+    timeout: 360,
+    env: [
+        'ASAN_OPTIONS=detect_leaks=0',
+        'ZEN_OS_IMAGE=' + meson.project_source_root() / '.zen-test-vms/test-image.qcow2',
+    ],
 )

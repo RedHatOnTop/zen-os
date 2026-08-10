@@ -63,6 +63,8 @@ pub fn build_qemu_args(
         // USB controller for hot-plug testing.
         "-device".into(),
         "qemu-xhci,id=usb-bus".into(),
+        "-device".into(),
+        "usb-tablet,bus=usb-bus.0".into(),
         // Virtio-serial for guest agent communication.
         "-device".into(),
         "virtio-serial".into(),

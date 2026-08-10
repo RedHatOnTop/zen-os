@@ -26,8 +26,10 @@
 #include <wlr/util/log.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include "zen/app-launcher.h"
 #include "zen/compositor.h"
 #include "zen/keybinds.h"
+#include "zen/shell.h"
 #include "zen/xdg.h"
 
 /* Forward declaration to avoid circular dependency with lock.h (Tier C).
@@ -64,6 +66,12 @@ static void execute_action(struct ZenCompositor *compositor,
                            ZenKeybindAction action,
                            const char *custom_cmd) {
     switch (action) {
+    case ZEN_ACTION_TOGGLE_LAUNCHER:
+        wlr_log(WLR_INFO, "%s", "Keybind: toggling app launcher");
+        if (compositor->shell && compositor->shell->launcher)
+            zen_app_launcher_toggle(compositor->shell->launcher);
+        break;
+
     case ZEN_ACTION_LAUNCH_TERMINAL: {
         wlr_log(WLR_INFO, "%s", "Keybind: launching terminal");
         pid_t pid = fork();

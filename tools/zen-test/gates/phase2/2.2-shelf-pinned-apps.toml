@@ -12,12 +12,12 @@ cpus = 2
 
 # Setup: write a shelf.json with 3 pinned apps before compositor starts.
 # The compositor reads shelf.json on init from ~/.config/zenos/shelf.json.
-[[setup.exec]]
+[[pre_boot.exec]]
 command = "mkdir -p /root/.config/zenos"
 timeout_seconds = 5
 
-[[setup.exec]]
-command = "printf '{\"position\": \"bottom\", \"auto_hide\": false, \"icon_size\": 32, \"pinned_apps\": [\"org.gnome.Terminal\", \"org.mozilla.firefox\", \"org.gnome.Nautilus\"]}\\n' > /root/.config/zenos/shelf.json"
+[[pre_boot.exec]]
+command = "printf '{\"position\": \"bottom\", \"auto_hide\": false, \"icon_size\": 32, \"pinned_apps\": [\"org.freedesktop.weston.wayland-terminal\", \"org.freedesktop.weston-editor\", \"org.freedesktop.weston-image\"]}\\n' > /root/.config/zenos/shelf.json"
 timeout_seconds = 5
 
 # Give compositor time to settle after boot
@@ -39,17 +39,52 @@ timeout_seconds = 5
 
 # ── Gate 2: shelf.json is present and has 3 pinned apps ──────────────────────
 
-[[assert.exec]]
-command = "test -f /root/.config/zenos/shelf.json"
-exit_code = 0
+[[assert.file_exists]]
+path = "/root/.config/zenos/shelf.json"
 description = "shelf.json exists"
+
+[[assert.file_json_value]]
+path = "/root/.config/zenos/shelf.json"
+query = "position"
+expected = "bottom"
+description = "shelf.json preserves the configured shelf position"
+
+[[assert.file_json_value]]
+path = "/root/.config/zenos/shelf.json"
+query = "auto_hide"
+expected = false
+description = "shelf.json preserves the configured auto-hide setting"
+
+[[assert.file_json_value]]
+path = "/root/.config/zenos/shelf.json"
+query = "pinned_apps.0"
+expected = "org.freedesktop.weston.wayland-terminal"
+description = "shelf.json preserves the first pinned app"
+
+[[assert.file_json_value]]
+path = "/root/.config/zenos/shelf.json"
+query = "pinned_apps.1"
+expected = "org.freedesktop.weston-editor"
+description = "shelf.json preserves the second pinned app"
+
+[[assert.file_json_value]]
+path = "/root/.config/zenos/shelf.json"
+query = "pinned_apps.2"
+expected = "org.freedesktop.weston-image"
+description = "shelf.json preserves the third pinned app"
+
+[[assert.exec_json_value]]
+command = "zen-shell-testctl"
+query = "shelf.pinned_count"
+expected = 3
+description = "Shell state reports all three configured pinned apps"
 timeout_seconds = 5
 
-# Count the number of pinned app entries (each is a quoted string in the array)
-[[assert.exec]]
-command = "python3 -c \"import json; d=json.load(open('/root/.config/zenos/shelf.json')); exit(0 if len(d.get('pinned_apps',[])) >= 3 else 1)\""
-exit_code = 0
-description = "shelf.json contains at least 3 pinned app entries"
+[[assert.exec_json_value]]
+command = "zen-shell-testctl"
+query = "shelf.pinned_apps.0.app_id"
+expected = "org.freedesktop.weston.wayland-terminal"
+description = "Shell state reports the first pinned app id"
 timeout_seconds = 5
 
 # ── Gate 3: shelf.json round-trip — write a new entry, verify, remove it ─────
@@ -72,18 +107,26 @@ timeout_seconds = 5
 # Launch weston-terminal directly to verify the compositor can host new surfaces.
 # (D-Bus LaunchApp is tested separately when D-Bus is available.)
 
-[[test.exec]]
+[[test.step]]
+kind = "exec"
 command = "WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/0 weston-terminal &"
 timeout_seconds = 10
 
-[[test.exec]]
-command = "sleep 3"
-timeout_seconds = 10
+[[test.step]]
+kind = "wait"
+seconds = 3
 
 [[assert.exec]]
 command = "pgrep weston-terminal"
 exit_code = 0
 description = "App launched (new surface appears — weston-terminal running)"
+timeout_seconds = 5
+
+[[assert.exec_json_value]]
+command = "zen-compositor-testctl"
+query = "focused_toplevel.app_id"
+expected = "org.freedesktop.weston.wayland-terminal"
+description = "Compositor state reports the mapped weston-terminal surface as the focused toplevel"
 timeout_seconds = 5
 
 # ── Gate 5: Running indicator — at least one weston-terminal active ───────────
@@ -94,12 +137,25 @@ exit_code = 0
 description = "Running app indicator: at least one weston-terminal toplevel active"
 timeout_seconds = 5
 
+[[assert.exec_json_value]]
+command = "zen-shell-testctl"
+query = "shelf.pinned_apps.0.is_running"
+expected = true
+description = "Shell state reports the running indicator for the pinned weston-terminal runtime app id"
+timeout_seconds = 5
+
 # ── Gate 6: Screenshot shows non-blank frame (shelf rendered) ─────────────────
 
 [[assert.screenshot]]
-type = "non_blank"
+type = "region_non_blank"
+name = "shelf-with-running-app"
+anchor = "bottom_left"
+x = 0
+y = 0
+height = 80
 min_size_bytes = 10000
-description = "Screen renders non-blank frame (shelf visible)"
+min_non_black_pixels = 500
+description = "Bottom strip contains rendered shelf content, not just console text"
 
 # ── Gate 7: ASan clean ────────────────────────────────────────────────────────
 

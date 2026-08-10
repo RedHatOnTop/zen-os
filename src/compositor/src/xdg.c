@@ -23,12 +23,55 @@
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/util/log.h>
 
+#include "zen/compositor-testctl.h"
 #include "zen/compositor.h"
+#include "zen/shelf.h"
+#include "zen/shell.h"
 #include "zen/xdg.h"
 
 /* ── Forward declarations for listener callbacks ─────────────────────────── */
 
 static void handle_new_xdg_toplevel(struct wl_listener *listener, void *data);
+
+static bool toplevel_is_mapped(const struct ZenToplevel *toplevel)
+{
+    return toplevel && toplevel->xdg_toplevel && toplevel->xdg_toplevel->base
+        && toplevel->xdg_toplevel->base->surface
+        && toplevel->xdg_toplevel->base->surface->mapped;
+}
+
+static bool compositor_has_mapped_app_id(struct ZenCompositor *compositor,
+                                         const char *app_id)
+{
+    struct ZenToplevel *toplevel = NULL;
+
+    if (!compositor || !app_id || !*app_id) {
+        return false;
+    }
+
+    wl_list_for_each(toplevel, &compositor->toplevels, link) {
+        if (toplevel->app_id && strcmp(toplevel->app_id, app_id) == 0
+            && toplevel_is_mapped(toplevel)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void sync_shelf_running_state(struct ZenCompositor *compositor,
+                                     const char *app_id)
+{
+    if (!compositor || !compositor->shell || !compositor->shell->shelf
+        || !app_id || !*app_id) {
+        return;
+    }
+
+    zen_shelf_update_running(
+        compositor->shell->shelf,
+        app_id,
+        compositor_has_mapped_app_id(compositor, app_id));
+}
 
 /* ── Focus Management ────────────────────────────────────────────────────── */
 
@@ -63,6 +106,7 @@ void zen_xdg_focus_toplevel(struct ZenCompositor *compositor,
         if (seat) {
             wlr_seat_keyboard_notify_clear_focus(seat);
         }
+        zen_compositor_testctl_sync(compositor);
         return;
     }
 
@@ -89,6 +133,8 @@ void zen_xdg_focus_toplevel(struct ZenCompositor *compositor,
     if (toplevel->scene_tree) {
         wlr_scene_node_raise_to_top(&toplevel->scene_tree->node);
     }
+
+    zen_compositor_testctl_sync(compositor);
 }
 
 /* ── XDG Shell Init / Destroy ────────────────────────────────────────────── */
@@ -159,6 +205,8 @@ static void handle_toplevel_map(struct wl_listener *listener, void *data) {
 
     /* Focus-on-map: newly mapped toplevel gets focus (Property 6). */
     zen_xdg_focus_toplevel(toplevel->compositor, toplevel);
+    sync_shelf_running_state(toplevel->compositor, toplevel->app_id);
+    zen_compositor_testctl_sync(toplevel->compositor);
 
     wlr_log(WLR_INFO, "Toplevel mapped: %p (title=%s)",
             (void *)toplevel, toplevel->title ? toplevel->title : "(null)");
@@ -186,14 +234,28 @@ static void handle_toplevel_unmap(struct wl_listener *listener, void *data) {
         zen_xdg_focus_toplevel(toplevel->compositor, next);
     }
 
+    sync_shelf_running_state(toplevel->compositor, toplevel->app_id);
+    zen_compositor_testctl_sync(toplevel->compositor);
+
     wlr_log(WLR_INFO, "Toplevel unmapped: %p", (void *)toplevel);
 }
 
 static void handle_toplevel_commit(struct wl_listener *listener, void *data) {
-    (void)listener;
     (void)data;
-    /* Surface commits are handled automatically by the wlroots scene graph.
-     * No additional work needed here for now. */
+    struct ZenToplevel *toplevel =
+        wl_container_of(listener, toplevel, commit);
+
+    if (toplevel->xdg_toplevel && toplevel->xdg_toplevel->base
+        && toplevel->xdg_toplevel->base->initial_commit) {
+        /*
+         * xdg-shell clients need an initial configure after their first
+         * commit before they may map a buffer. Let the client pick its own
+         * size by sending a 0x0 configure once the surface is initialized.
+         */
+        wlr_xdg_toplevel_set_size(toplevel->xdg_toplevel, 0, 0);
+    }
+
+    zen_compositor_testctl_sync(toplevel->compositor);
 }
 
 static void handle_toplevel_destroy(struct wl_listener *listener, void *data) {
@@ -201,6 +263,7 @@ static void handle_toplevel_destroy(struct wl_listener *listener, void *data) {
     struct ZenToplevel *toplevel =
         wl_container_of(listener, toplevel, destroy);
     struct ZenCompositor *compositor = toplevel->compositor;
+    const char *app_id = toplevel->app_id;
 
     wlr_log(WLR_INFO, "Toplevel destroyed: %p (title=%s)",
             (void *)toplevel, toplevel->title ? toplevel->title : "(null)");
@@ -241,6 +304,9 @@ static void handle_toplevel_destroy(struct wl_listener *listener, void *data) {
 
     /* Remove from toplevels list (Property 1: membership invariant). */
     wl_list_remove(&toplevel->link);
+
+    sync_shelf_running_state(compositor, app_id);
+    zen_compositor_testctl_sync(compositor);
 
     /* Free owned strings and the toplevel itself. */
     free(toplevel->title);
@@ -330,8 +396,10 @@ static void handle_toplevel_request_maximize(struct wl_listener *listener,
 
         wlr_output_layout_get_box(compositor->output_layout, output, &box);
 
-        /* TODO: subtract exclusive zones once layer shell (1.9) is in place. */
-        wlr_xdg_toplevel_set_size(xdg_tl, box.width, box.height);
+        /* Subtract shelf exclusive zone (48px at bottom). */
+        int shelf_h = 48;
+        wlr_xdg_toplevel_set_size(xdg_tl, box.width,
+                                  box.height - shelf_h);
         wlr_xdg_toplevel_set_maximized(xdg_tl, true);
 
         wlr_scene_node_set_position(&toplevel->scene_tree->node,
@@ -341,6 +409,8 @@ static void handle_toplevel_request_maximize(struct wl_listener *listener,
         wlr_xdg_toplevel_set_size(xdg_tl, 0, 0);
         wlr_xdg_toplevel_set_maximized(xdg_tl, false);
     }
+
+    zen_compositor_testctl_sync(compositor);
 }
 
 static void handle_toplevel_request_fullscreen(struct wl_listener *listener,
@@ -393,6 +463,8 @@ static void handle_toplevel_request_fullscreen(struct wl_listener *listener,
         wlr_xdg_toplevel_set_size(xdg_tl, 0, 0);
         wlr_xdg_toplevel_set_fullscreen(xdg_tl, false);
     }
+
+    zen_compositor_testctl_sync(compositor);
 }
 
 static void handle_toplevel_set_title(struct wl_listener *listener,
@@ -404,6 +476,7 @@ static void handle_toplevel_set_title(struct wl_listener *listener,
 
     free(toplevel->title);
     toplevel->title = new_title ? strdup(new_title) : NULL;
+    zen_compositor_testctl_sync(toplevel->compositor);
 }
 
 static void handle_toplevel_set_app_id(struct wl_listener *listener,
@@ -412,9 +485,22 @@ static void handle_toplevel_set_app_id(struct wl_listener *listener,
     struct ZenToplevel *toplevel =
         wl_container_of(listener, toplevel, set_app_id);
     const char *new_app_id = toplevel->xdg_toplevel->app_id;
+    char *old_app_id = toplevel->app_id;
+    char *replacement = NULL;
 
-    free(toplevel->app_id);
-    toplevel->app_id = new_app_id ? strdup(new_app_id) : NULL;
+    if (new_app_id) {
+        replacement = strdup(new_app_id);
+        if (!replacement) {
+            zen_compositor_testctl_sync(toplevel->compositor);
+            return;
+        }
+    }
+
+    toplevel->app_id = replacement;
+    sync_shelf_running_state(toplevel->compositor, old_app_id);
+    sync_shelf_running_state(toplevel->compositor, toplevel->app_id);
+    free(old_app_id);
+    zen_compositor_testctl_sync(toplevel->compositor);
 }
 
 /* ── New XDG Toplevel Handler ────────────────────────────────────────────── */
@@ -488,10 +574,10 @@ static void handle_new_xdg_toplevel(struct wl_listener *listener,
     wl_list_insert(&compositor->toplevels, &toplevel->link);
 
     wlr_log(WLR_INFO, "New XDG toplevel created: %p", (void *)toplevel);
+    zen_compositor_testctl_sync(compositor);
 
-    /* Focus is deferred to handle_toplevel_map — calling
-     * wlr_xdg_toplevel_set_activated() before the surface is initialized
-     * triggers an assertion failure in wlr_xdg_surface_schedule_configure(). */
+    /* Focus is deferred to handle_toplevel_map after the initial configure
+     * has been sent from handle_toplevel_commit(). */
     return;
 
 cleanup:

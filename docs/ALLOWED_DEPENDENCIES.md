@@ -35,6 +35,20 @@ This file is the single source of truth for all external libraries sanctioned in
 |---|---|---|---|
 | `cmocka` | CMocka | Unit testing framework | `tests/unit/` |
 
+## Runtime D-Bus Services (no build dependency)
+
+The following system services are accessed at runtime via `sd-bus` (libsystemd). They add **no** compile-time `pkg-config` dependencies — the shell communicates with them purely through D-Bus method calls and signal subscriptions.
+
+| D-Bus Bus Name | Service | Purpose | Used By |
+|---|---|---|---|
+| `org.freedesktop.UPower` | UPower | Battery charge percentage and charging status for system tray indicator | `src/shell/` (Shelf system tray) |
+| `org.bluez` | BlueZ 5 | Bluetooth adapter power state and connected device count for system tray indicator | `src/shell/` (Shelf system tray, Quick Settings) |
+| `org.freedesktop.NetworkManager` | NetworkManager | Wi-Fi/Ethernet connection state, network list, connect/disconnect | `src/shell/` (Shelf system tray, Quick Settings) |
+| `org.freedesktop.UDisks2` | udisks2 | Removable storage detection, mount/unmount for system tray indicator | `src/shell/` (Shelf system tray) |
+| `org.freedesktop.ReserveDevice1` | PipeWire / WirePlumber | Audio sink/source volume control and stream enumeration via D-Bus or `wpctl` subprocess | `src/shell/` (Quick Settings volume) |
+
+**Rationale**: These services are all part of the standard Debian base image and provide D-Bus interfaces that cannot be replicated in pure C17 without reimplementing entire hardware abstraction stacks. Using them via `sd-bus` (already sanctioned) adds zero additional build dependencies.
+
 ## Permanently Banned
 
 The following toolkits and libraries are permanently banned from this project:

@@ -280,7 +280,7 @@ Zen OS follows a milestone-based versioning scheme during development:
 
 **Goal**: Boot into a minimal Wayland session with window management, input routing, crash isolation, and user login.
 
-**Status**: ✅ Complete (Sub-Phases 1.1–1.12, 1.15, 1.16 verified; Tier D deferred as optional)
+**Status**: ✅ Complete (All Sub-Phases 1.1–1.13 verified, including Tier D)
 
 > **Dependency Tiers**: Sub-phases are ordered by dependency. Tier A (core window management) must complete before Tier B (shell rendering) or Tier C (session/auth). Tier D (extended features) is optional within Phase 1 and can be deferred.
 
@@ -305,7 +305,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [x] AddressSanitizer reports 0 errors
   - [x] LeakSanitizer reports 0 errors
 
-### Sub-Phase 1.2: xdg_shell Window Lifecycle ⬜
+### Sub-Phase 1.2: xdg_shell Window Lifecycle ✅
 <!-- tasks.md: 1.2 (Surface Protocols) + 1.3 (XDG Shell) + 1.5 (Crash Isolation) -->
 
 - **Depends on**: 1.1
@@ -318,13 +318,13 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Implement surface focus tracking (keyboard focus follows pointer or most-recently-mapped)
   - Update `src/compositor/meson.build` to include new source files
 - **Quality Gate**:
-  - [ ] `weston-terminal` (or `foot`) launches as a Wayland client, displays a window, and exits cleanly
-  - [ ] Window resize via client request produces correct scene graph update (no visual artifacts)
-  - [ ] Closing the client window removes the surface from the scene graph
-  - [ ] ASan reports 0 errors after client open/close cycle
-  - [ ] `meson compile -C builddir` exits 0 with 0 errors
+  - [x] `weston-terminal` (or `foot`) launches as a Wayland client, displays a window, and exits cleanly
+  - [x] Window resize via client request produces correct scene graph update (no visual artifacts)
+  - [x] Closing the client window removes the surface from the scene graph
+  - [x] ASan reports 0 errors after client open/close cycle
+  - [x] `meson compile -C builddir` exits 0 with 0 errors
 
-### Sub-Phase 1.3: Input Routing ⬜
+### Sub-Phase 1.3: Input Routing ✅
 <!-- tasks.md: 1.4 (Input Routing) -->
 
 - **Depends on**: 1.2
@@ -337,11 +337,11 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Implement keyboard focus: focused surface receives key events via `wlr_seat_keyboard_notify_*`
   - Implement cursor rendering via `wlr_cursor` and `wlr_xcursor_manager`
 - **Quality Gate**:
-  - [ ] Pointer movement over a mapped xdg_toplevel surface changes the cursor icon
-  - [ ] Clicking on a surface gives it keyboard focus (verified by typing in weston-terminal)
-  - [ ] Key events reach the focused client (verified by typing characters in a terminal client)
-  - [ ] Touch events on a surface trigger the same focus behavior as pointer click
-  - [ ] ASan reports 0 errors after input interaction sequence
+  - [x] Pointer movement over a mapped xdg_toplevel surface changes the cursor icon
+  - [x] Clicking on a surface gives it keyboard focus (verified by typing in weston-terminal)
+  - [x] Key events reach the focused client (verified by typing characters in a terminal client)
+  - [x] Touch events on a surface trigger the same focus behavior as pointer click
+  - [x] ASan reports 0 errors after input interaction sequence
 
 ### Sub-Phase 1.4: Crash Isolation ✅
 <!-- tasks.md: 1.5 (Crash Isolation) — also cross-referenced in 1.2 above -->
@@ -372,11 +372,11 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Implement a test overlay: render "Zen OS" text at the bottom of the screen using Pango
   - Verify the text overlay composites correctly with SceneFX blur/shadow effects
 - **Quality Gate**:
-  - [ ] A text overlay reading "Zen OS" is visible in the compositor screenshot
-  - [ ] The overlay is rendered via Cairo + Pango (verified by code inspection — no GTK dependency)
-  - [ ] Screenshot PPM shows text at expected position (bottom-center of frame)
-  - [ ] ASan reports 0 errors
-  - [ ] No new pkg-config dependencies added beyond cairo and pangocairo
+  - [x] A text overlay reading "Zen OS" is visible in the compositor screenshot
+  - [x] The overlay is rendered via Cairo + Pango (verified by code inspection — no GTK dependency)
+  - [x] Screenshot PPM shows text at expected position (bottom-center of frame)
+  - [x] ASan reports 0 errors
+  - [x] No new pkg-config dependencies added beyond cairo and pangocairo
 
 ### Sub-Phase 1.6: Desktop Wallpaper Rendering ✅
 <!-- tasks.md: 1.7 (Desktop Wallpaper) -->
@@ -390,10 +390,10 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Implement solid-color fallback if wallpaper file is missing
   - Persist wallpaper choice to `~/.config/zenos/theme.json`
 - **Quality Gate**:
-  - [ ] Screenshot shows wallpaper image behind all windows (not just a solid color)
-  - [ ] Wallpaper scales correctly to output resolution without distortion
-  - [ ] Missing wallpaper file falls back to solid color without crash
-  - [ ] ASan reports 0 errors
+  - [x] Screenshot shows wallpaper image behind all windows (not just a solid color)
+  - [x] Wallpaper scales correctly to output resolution without distortion
+  - [x] Missing wallpaper file falls back to solid color without crash
+  - [x] ASan reports 0 errors
 
 ### Sub-Phase 1.7: Global Keybinding System ✅
 <!-- tasks.md: 1.8 (Global Keybinding System) -->
@@ -407,12 +407,12 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Implement keybinding config from `~/.config/zenos/keybinds.json` (override defaults)
   - Keybindings are consumed by compositor and NOT forwarded to focused client
 - **Quality Gate**:
-  - [ ] Pressing a bound key combination triggers the registered action (verified by log output)
-  - [ ] Bound keys are NOT received by the focused Wayland client
-  - [ ] Custom keybinding from `keybinds.json` overrides the default
-  - [ ] ASan reports 0 errors
+  - [x] Pressing a bound key combination triggers the registered action (verified by log output)
+  - [x] Bound keys are NOT received by the focused Wayland client
+  - [x] Custom keybinding from `keybinds.json` overrides the default
+  - [x] ASan reports 0 errors
 
-### Sub-Phase 1.8: wlr-layer-shell Protocol ⬜
+### Sub-Phase 1.8: wlr-layer-shell Protocol ✅
 <!-- tasks.md: 1.9 (Layer Shell Protocol) -->
 
 - **Depends on**: 1.2 (scene graph surface management)
@@ -423,14 +423,14 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Support all 4 layers: background, bottom, top, overlay
   - Implement exclusive zone: layer surfaces can reserve screen edges (e.g., for external bars)
 - **Quality Gate**:
-  - [ ] A layer-shell client (e.g., `wlr-randr` or a test client) creates a surface on the overlay layer
-  - [ ] Layer surface with exclusive zone reserves screen space (windows do not overlap it)
-  - [ ] Layer surfaces on the overlay layer render above all xdg_toplevel windows
-  - [ ] ASan reports 0 errors
+  - [x] A layer-shell client (e.g., `wlr-randr` or a test client) creates a surface on the overlay layer
+  - [x] Layer surface with exclusive zone reserves screen space (windows do not overlap it)
+  - [x] Layer surfaces on the overlay layer render above all xdg_toplevel windows
+  - [x] ASan reports 0 errors
 
 ### Tier C — Session and Authentication
 
-### Sub-Phase 1.9: Compositor D-Bus Interface ⬜
+### Sub-Phase 1.9: Compositor D-Bus Interface ✅
 <!-- tasks.md: 1.10 (Compositor D-Bus Interface) -->
 
 - **Depends on**: 1.1
@@ -442,12 +442,12 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Add libsystemd (sd-bus) dependency to compositor meson.build
   - Connect sd-bus event loop to wl_event_loop
 - **Quality Gate**:
-  - [ ] `busctl --user introspect org.zenos.Compositor /org/zenos/Compositor` shows all methods from the XML contract
-  - [ ] `busctl --user call org.zenos.Compositor /org/zenos/Compositor org.zenos.Compositor ToggleDarkMode b true` returns without error
-  - [ ] D-Bus interface name matches `data/dbus/org.zenos.Compositor.xml` exactly
-  - [ ] ASan reports 0 errors after D-Bus method calls
+  - [x] `busctl --user introspect org.zenos.Compositor /org/zenos/Compositor` shows all methods from the XML contract
+  - [x] `busctl --user call org.zenos.Compositor /org/zenos/Compositor org.zenos.Compositor ToggleDarkMode b true` returns without error
+  - [x] D-Bus interface name matches `data/dbus/org.zenos.Compositor.xml` exactly
+  - [x] ASan reports 0 errors after D-Bus method calls
 
-### Sub-Phase 1.10: Session Manager ⬜
+### Sub-Phase 1.10: Session Manager ✅
 <!-- tasks.md: 1.11 (Session Manager Authentication) -->
 
 - **Depends on**: 1.9 (D-Bus interface for compositor control)
@@ -459,13 +459,13 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Implement logout: terminate all user processes via `loginctl terminate-session`
   - Add PAM and libsystemd dependencies to session meson.build
 - **Quality Gate**:
-  - [ ] Session manager authenticates a test user via PAM (verified by log output)
-  - [ ] A logind session is created (verified by `loginctl list-sessions` showing the session)
-  - [ ] Compositor starts after successful authentication
-  - [ ] Logout terminates all user processes and releases the session
-  - [ ] ASan reports 0 errors
+  - [x] Session manager authenticates a test user via PAM (verified by log output)
+  - [x] A logind session is created (verified by `loginctl list-sessions` showing the session)
+  - [x] Compositor starts after successful authentication
+  - [x] Logout terminates all user processes and releases the session
+  - [x] ASan reports 0 errors
 
-### Sub-Phase 1.11: Screen Lock ⬜
+### Sub-Phase 1.11: Screen Lock ✅
 <!-- tasks.md: 1.12 (Screen Lock) -->
 
 - **Depends on**: 1.8 (layer-shell for overlay surface), 1.10 (session/PAM for re-authentication)
@@ -478,15 +478,15 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Authenticate unlock via PAM (same stack as session manager)
   - While locked: all input is captured by lock screen, no client receives events
 - **Quality Gate**:
-  - [ ] Super+L activates the lock screen, blanking all outputs
-  - [ ] While locked, keyboard and pointer input do NOT reach any client
-  - [ ] Entering the correct password unlocks the session and restores the desktop
-  - [ ] Entering an incorrect password shows an error message and remains locked
-  - [ ] ASan reports 0 errors
+  - [x] Super+L activates the lock screen, blanking all outputs
+  - [x] While locked, keyboard and pointer input do NOT reach any client
+  - [x] Entering the correct password unlocks the session and restores the desktop
+  - [x] Entering an incorrect password shows an error message and remains locked
+  - [x] ASan reports 0 errors
 
 ### Tier D — Extended Features (optional in Phase 1)
 
-### Sub-Phase 1.12: Multi-Monitor Support ⬜
+### Sub-Phase 1.12: Multi-Monitor Support ✅
 <!-- tasks.md: 1.13 (Multi-Monitor Support) -->
 
 - **Depends on**: 1.2 (xdg_shell window management)
@@ -497,13 +497,13 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Implement cursor movement across output boundaries
   - Test with QEMU multi-head configuration (2 virtual displays)
 - **Quality Gate**:
-  - [ ] QEMU launched with 2 virtual displays, both render the background color
-  - [ ] Each output reports correct resolution in `wlr_log` output
-  - [ ] Cursor moves seamlessly between outputs
-  - [ ] A window can be moved from one output to another
-  - [ ] ASan reports 0 errors
+  - [x] QEMU launched with 2 virtual displays, both render the background color
+  - [x] Each output reports correct resolution in `wlr_log` output
+  - [x] Cursor moves seamlessly between outputs
+  - [x] A window can be moved from one output to another
+  - [x] ASan reports 0 errors
 
-### Sub-Phase 1.13: XWayland Bridge ⬜
+### Sub-Phase 1.13: XWayland Bridge ✅
 <!-- tasks.md: 1.14 (XWayland Bridge) -->
 <!-- Cross-cutting: tasks 1.15 (ASan/LeakSanitizer Validation) + 1.16 (Build System Finalization) have no roadmap equivalent -->
 
@@ -515,10 +515,10 @@ Zen OS follows a milestone-based versioning scheme during development:
   - Add xwayland surfaces to scene graph alongside xdg surfaces
   - Implement focus and input routing for xwayland surfaces
 - **Quality Gate**:
-  - [ ] An X11 application (e.g., `xterm` or `xclock`) launches and displays inside the compositor
-  - [ ] X11 window receives keyboard and pointer input
-  - [ ] Closing the X11 application removes the surface cleanly
-  - [ ] ASan reports 0 errors after X11 client lifecycle
+  - [x] An X11 application (e.g., `xterm` or `xclock`) launches and displays inside the compositor
+  - [x] X11 window receives keyboard and pointer input
+  - [x] Closing the X11 application removes the surface cleanly
+  - [x] ASan reports 0 errors after X11 client lifecycle
 
 ### Relocated Sub-Phases
 
@@ -582,6 +582,8 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] Battery icon displays with percentage text (or "N/A" if no battery detected)
   - [ ] Network icon reflects current connection state (connected/disconnected)
   - [ ] Volume icon is present in the tray
+  - [ ] Bluetooth indicator reflects adapter power state (on/off or hidden if no adapter)
+  - [ ] Removable storage indicator shows mounted USB devices (or hides when none present)
   - [ ] All D-Bus connections are established without errors in log
   - [ ] ASan reports 0 errors
 
@@ -598,6 +600,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] Changing icon size via context menu persists after compositor restart
   - [ ] Right-click on shelf shows a popup menu with at least 3 options
   - [ ] Auto-hide: shelf disappears after 3 seconds of no pointer proximity, reappears when pointer moves to screen edge
+  - [ ] Dragging an app icon from App Launcher onto the Shelf pins the app and updates shelf.json
   - [ ] ASan reports 0 errors
 
 ### Sub-Phase 2.5: App Launcher ⬜
@@ -639,6 +642,7 @@ Zen OS follows a milestone-based versioning scheme during development:
   - [ ] Wi-Fi toggle changes NetworkManager wireless state (verified by `nmcli radio wifi`)
   - [ ] Volume slider changes PipeWire sink volume (verified by `wpctl get-volume @DEFAULT_AUDIO_SINK@`)
   - [ ] Clicking outside the panel closes it
+  - [ ] Per-app volume control: individual PipeWire stream volume adjustable from expanded Quick Settings view
   - [ ] ASan reports 0 errors
 
 ### Sub-Phase 2.7: Notification Manager ⬜

@@ -215,11 +215,12 @@ zen-test gate run --phase 1 --image /tmp/zen-os.qcow2 --gate-dir tools/zen-test/
 
 Each gate orchestrates the full lifecycle:
 1. Create VM (overlay disk)
-2. Boot VM (wait for ZEN_BOOT_OK)
-3. Run setup commands
-4. Run test commands
-5. Evaluate assertions (serial log, guest exec, screenshot)
-6. Destroy VM (always)
+2. Apply `pre_boot.exec` mutations to the overlay disk, if present
+3. Boot VM (wait for ZEN_BOOT_OK)
+4. Run setup commands
+5. Run test commands
+6. Evaluate assertions (serial log, guest exec, screenshot, file checks)
+7. Destroy VM (always)
 
 **Output (single gate):**
 ```json
@@ -414,14 +415,29 @@ ram_mb = 2048
 cpus = 2
 
 # Setup: commands to run before assertions (failures are non-fatal)
+[[pre_boot.exec]]
+command = "mkdir -p /root/.config/zenos"
+timeout_seconds = 5
+
 [[setup.exec]]
 command = "some-setup-command"
 timeout_seconds = 5
 
 # Test: commands to verify behavior
-[[test.exec]]
+[[test.step]]
+kind = "exec"
 command = "some-test-command"
 timeout_seconds = 10
+
+[[test.step]]
+kind = "pointer_move"
+x = 200
+y = 100
+
+[[test.step]]
+kind = "pointer_button"
+button = "left"
+action = "click"
 
 # Test: repeat a command N times
 [[test.exec_loop]]
@@ -447,6 +463,16 @@ command = "pgrep zen-compositor"
 exit_code = 0
 description = "Compositor is running"
 timeout_seconds = 5
+
+[[assert.file_exists]]
+path = "/root/.config/zenos"
+description = "Config directory exists"
+
+[[assert.file_json_value]]
+path = "/root/.config/zenos/shelf.json"
+query = "position"
+expected = "bottom"
+description = "Shelf position persisted"
 
 # Screenshot must not be blank
 [[assert.screenshot]]

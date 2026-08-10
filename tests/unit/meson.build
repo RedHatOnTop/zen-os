@@ -20,3 +20,6 @@ subdir('compositor')
 
 # Session unit tests
 subdir('session')
+
+# Shell unit tests
+subdir('shell')

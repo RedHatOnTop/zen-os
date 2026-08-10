@@ -155,10 +155,8 @@ Wants=dbus.service
 
 [Service]
 Type=simple
-Environment=WLR_BACKENDS=headless
 Environment=WLR_RENDERER=gles2
 Environment=WLR_RENDERER_ALLOW_SOFTWARE=1
-Environment=WLR_HEADLESS_OUTPUTS=1
 Environment=XDG_RUNTIME_DIR=/run/user/0
 Environment=WLR_LIBINPUT_NO_DEVICES=1
 Environment=LD_LIBRARY_PATH=/usr/lib/zen
@@ -186,6 +184,15 @@ if [[ -f "$AGENT_DIR/zen-test-agent" ]]; then
 else
     echo "  WARNING: Guest agent not found at $AGENT_DIR (VM exec will not work)"
 fi
+
+for helper in zen-shell-testctl zen-compositor-testctl; do
+    if [[ -f "$AGENT_DIR/$helper" ]]; then
+        install -m 755 "$AGENT_DIR/$helper" "$ROOTFS/usr/local/bin/$helper"
+        echo "  Installed guest helper: $helper"
+    else
+        echo "  WARNING: guest helper not found: $AGENT_DIR/$helper"
+    fi
+done
 
 echo "[7/8] Installing GRUB..."
 chroot "$ROOTFS" grub-install --target=i386-pc --boot-directory=/boot "$LOOP_DEV"

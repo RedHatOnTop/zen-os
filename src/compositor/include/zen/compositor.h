@@ -46,6 +46,7 @@ struct wlr_xwayland;
 /* Module struct forward declarations */
 struct ZenToplevel;
 struct ZenCairoBuffer;
+struct ZenShell;
 
 /*
  * ZenCompositor — top-level compositor state.
@@ -116,6 +117,14 @@ struct ZenCompositor {
     double                        grab_y;             /* cursor y at grab start */
     int                           grab_node_x;        /* scene node x at grab start */
     int                           grab_node_y;        /* scene node y at grab start */
+
+    /* ── Phase 2: Desktop Shell ──────────────────────────────────── */
+    struct ZenShell          *shell;           /* in-process shell module */
+    struct wlr_scene_tree    *shelf_tree;      /* shelf bar scene node */
+    struct wlr_scene_tree    *notification_tree; /* toast stack scene node */
+    struct wlr_scene_tree    *launcher_tree;   /* app launcher overlay */
+    struct wlr_scene_tree    *quick_settings_tree; /* QS popup */
+    struct wlr_scene_tree    *context_menu_tree;   /* shelf context menu */
 };
 
 /*

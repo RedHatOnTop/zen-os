@@ -139,13 +139,12 @@ pub async fn vm_boot(
 
         let signal = std::env::var("ZEN_BOOT_SIGNAL")
             .unwrap_or_else(|_| "ZEN_BOOT_OK".to_string());
-        let fallback = "login:";
         let poll_interval = Duration::from_secs(1);
         let deadline = Duration::from_secs(boot_timeout);
 
         let result = serial::tail::wait_for_pattern(
             &paths.serial_log,
-            &[&signal, fallback],
+            &[&signal],
             &serial::patterns::ERROR_PATTERNS,
             deadline,
             poll_interval,
@@ -155,16 +154,10 @@ pub async fn vm_boot(
         match result {
             serial::tail::WaitResult::PatternFound(pat) => {
                 boot_time_ms = Some(boot_start.elapsed().as_millis() as u64);
-                if pat == fallback {
-                    output::log_warn(&format!(
-                        "Fallback boot signal detected: {fallback}"
-                    ));
-                } else {
-                    output::log_ok(&format!(
-                        "Boot signal detected: {pat} ({:.1}s)",
-                        boot_start.elapsed().as_secs_f64()
-                    ));
-                }
+                output::log_ok(&format!(
+                    "Boot signal detected: {pat} ({:.1}s)",
+                    boot_start.elapsed().as_secs_f64()
+                ));
             }
             serial::tail::WaitResult::ErrorFound(pat) => {
                 return Err(ZenTestError::BootFailed(format!(

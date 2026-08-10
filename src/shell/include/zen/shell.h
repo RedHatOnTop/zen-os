@@ -13,22 +13,38 @@
 #ifndef ZEN_SHELL_SHELL_H
 #define ZEN_SHELL_SHELL_H
 
-/*
- * Initialize the desktop shell module.
- * Must be called after the compositor scene graph is ready.
- * Returns 0 on success, -1 on failure.
- */
-int zen_shell_init(void);
+#include <stdbool.h>
 
-/*
- * Tear down the desktop shell, releasing all resources.
- */
-void zen_shell_destroy(void);
+struct ZenCompositor;
+struct ZenShelf;
+struct ZenAppLauncher;
+struct ZenQuickSettings;
+struct ZenNotificationMgr;
+struct ZenThemeConfig;
 
-/*
- * Toggle system-wide dark mode.
- * Repaints all shell surfaces with the new theme.
- */
-void zen_shell_set_dark_mode(int enabled);
+/* Top-level shell state, owned by ZenCompositor. */
+struct ZenShell {
+    struct ZenCompositor      *compositor;
+    struct ZenShelf           *shelf;
+    struct ZenAppLauncher     *launcher;
+    struct ZenQuickSettings   *quick_settings;
+    struct ZenNotificationMgr *notifications;
+    struct ZenThemeConfig     *theme;
+    bool                       dark_mode;
+};
+
+/* Initialize the desktop shell. Must be called after scene graph is ready.
+ * Returns 0 on success, -1 on failure. */
+int zen_shell_init(struct ZenShell *shell, struct ZenCompositor *compositor);
+
+/* Tear down the desktop shell, releasing all resources.
+ * Destroys in reverse order: notifications, quick_settings, launcher, shelf. */
+void zen_shell_destroy(struct ZenShell *shell);
+
+/* Switch all shell elements to dark or light mode. Repaints all surfaces. */
+void zen_shell_set_dark_mode(struct ZenShell *shell, bool enabled);
+
+/* Repaint all visible shell surfaces (called after theme change). */
+void zen_shell_repaint_all(struct ZenShell *shell);
 
 #endif /* ZEN_SHELL_SHELL_H */

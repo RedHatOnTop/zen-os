@@ -35,6 +35,7 @@
 #include <scenefx/render/fx_renderer/fx_renderer.h>
 
 #include "zen/compositor.h"
+#include "zen/compositor-testctl.h"
 #include "zen/dbus.h"
 #include "zen/input.h"
 #include "zen/keybinds.h"
@@ -214,6 +215,7 @@ static void handle_new_output(struct wl_listener *listener, void *data) {
     wlr_log(WLR_INFO, "Output configured: %s (%dx%d)",
             wlr_output->name,
             wlr_output->width, wlr_output->height);
+    zen_compositor_testctl_sync(compositor);
 }
 
 /* ── Boot Signal ─────────────────────────────────────────────────────────── */
@@ -425,6 +427,7 @@ int zen_compositor_create(struct ZenCompositor *compositor) {
         goto cleanup;
     }
     wlr_log(WLR_INFO, "%s", "Shell module initialized");
+    zen_compositor_testctl_sync(compositor);
 
     wlr_log(WLR_INFO, "%s", "Zen OS Compositor initialized successfully");
     ret = 0;
@@ -444,6 +447,8 @@ void zen_compositor_run(struct ZenCompositor *compositor) {
         wlr_log(WLR_INFO, "Wayland socket: %s", socket);
         setenv("WAYLAND_DISPLAY", socket, true);
     }
+
+    zen_compositor_testctl_sync(compositor);
 
     /* Emit boot signal AFTER the socket exists.
      * This tells zen-test that the compositor is ready for clients. */
@@ -502,6 +507,7 @@ void zen_compositor_destroy(struct ZenCompositor *compositor) {
         compositor->wl_display = NULL;
     }
 
+    zen_compositor_testctl_clear();
     wlr_log(WLR_INFO, "%s", "Compositor destroyed");
 }
 

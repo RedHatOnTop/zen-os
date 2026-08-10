@@ -69,6 +69,38 @@ pub async fn qmp_send_key(socket: &Path, keys: &[&str]) -> Result<()> {
     Ok(())
 }
 
+/// Send raw input events to the guest via QMP.
+pub async fn qmp_input_send_event(
+    socket: &Path,
+    events: &[serde_json::Value],
+) -> Result<()> {
+    qmp_execute(
+        socket,
+        "input-send-event",
+        Some(json!({"events": events})),
+    )
+    .await?;
+    Ok(())
+}
+
+/// Move the pointer to absolute QMP coordinates.
+pub async fn qmp_pointer_move_abs(socket: &Path, x: u32, y: u32) -> Result<()> {
+    let events = [
+        json!({"type": "abs", "data": {"axis": "x", "value": x}}),
+        json!({"type": "abs", "data": {"axis": "y", "value": y}}),
+    ];
+    qmp_input_send_event(socket, &events).await
+}
+
+/// Press or release a pointer button.
+pub async fn qmp_pointer_button(socket: &Path, button: &str, down: bool) -> Result<()> {
+    let events = [json!({
+        "type": "btn",
+        "data": {"down": down, "button": button}
+    })];
+    qmp_input_send_event(socket, &events).await
+}
+
 /// Hot-add a USB storage device.
 pub async fn qmp_add_usb_drive(
     socket: &Path,

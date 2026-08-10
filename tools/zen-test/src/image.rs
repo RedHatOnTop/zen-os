@@ -22,10 +22,26 @@ pub fn build_image(compositor_path: &Path, output_path: &Path) -> Result<ImageIn
         compositor_path.display()
     ));
 
+    let compositor = compositor_path
+        .to_str()
+        .ok_or_else(|| ZenTestError::ImageBuildFailed(
+            "Compositor path is not valid UTF-8".into()
+        ))?;
+    let output = output_path
+        .to_str()
+        .ok_or_else(|| ZenTestError::ImageBuildFailed(
+            "Output path is not valid UTF-8".into()
+        ))?;
+
     let status = Command::new("sudo")
-        .args(["bash", &script.to_string_lossy()])
-        .env("ZEN_COMPOSITOR", compositor_path)
-        .env("ZEN_OUTPUT_IMAGE", output_path)
+        .args([
+            "bash",
+            &script.to_string_lossy(),
+            "--compositor",
+            compositor,
+            "--output",
+            output,
+        ])
         .output()
         .map_err(|e| ZenTestError::ImageBuildFailed(format!("Failed to run build script: {e}")))?;
 

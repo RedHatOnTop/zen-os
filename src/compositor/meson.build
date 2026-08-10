@@ -16,6 +16,7 @@ wlr_protocol_inc_path = meson.project_build_root() / 'subprojects' / 'wlroots' /
 
 compositor_src = files(
     'src/main.c',
+    'src/compositor-testctl.c',
     'src/xdg.c',
     'src/input.c',
     'src/cairo_buffer.c',
@@ -46,6 +47,9 @@ if libsystemd.found()
 endif
 if get_option('enable_xwayland')
     compositor_c_args += ['-DHAVE_XWAYLAND']
+endif
+if get_option('enable_tests')
+    compositor_c_args += ['-DZEN_ENABLE_TEST_HOOKS']
 endif
 
 executable('zen-compositor',

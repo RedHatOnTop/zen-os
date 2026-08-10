@@ -20,15 +20,35 @@ exit_code = 0
 description = "Compositor process is running"
 timeout_seconds = 5
 
+[[assert.exec_json_value]]
+command = "zen-shell-testctl"
+query = "shelf.position"
+expected = "bottom"
+description = "Shell state reports the shelf on the bottom edge"
+timeout_seconds = 5
+
+[[assert.exec_json_value]]
+command = "zen-shell-testctl"
+query = "shelf.height"
+expected = 48
+description = "Shell state reports the expected shelf height"
+timeout_seconds = 5
+
 # main.c logs this after zen_shell_init() succeeds
 [[assert.serial]]
 pattern = "Shell module initialized"
 description = "Shell/shelf module initialized successfully"
 
 [[assert.screenshot]]
-type = "non_blank"
+type = "region_non_blank"
+name = "shelf-bottom-strip"
+anchor = "bottom_left"
+x = 0
+y = 0
+height = 80
 min_size_bytes = 10000
-description = "Screen is rendering (non-blank frame)"
+min_non_black_pixels = 500
+description = "Bottom strip contains rendered shelf content, not just console text"
 
 [[assert.serial_absent]]
 pattern = "ERROR: AddressSanitizer"

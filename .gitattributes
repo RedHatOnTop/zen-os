@@ -1,0 +1,13 @@
+# This is a Linux OS project. CRLF is not merely untidy here: the apparmor
+# profiles under data/apparmor and the unit files under data/systemd are parsed
+# by tools that treat a trailing CR as part of the value.
+#
+# The Windows checkout this repository was developed in committed 164 files with
+# CRLF in the blob, so a fresh clone reproduced them. eol=lf pins the working
+# tree regardless of the platform core.autocrlf happens to be set for.
+* text=auto eol=lf
+
+*.png binary
+*.ppm binary
+*.bmp binary
+*.qcow2 binary
